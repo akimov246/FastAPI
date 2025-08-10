@@ -1,12 +1,12 @@
 import asyncio
+import os
+import time
 
-from fastapi import FastAPI, Form, File, UploadFile, Header
+from fastapi import FastAPI, Form, File, UploadFile, Header, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from starlette.requests import Request
 from pathlib import Path
-import os
-import time
 from pydantic import BaseModel
 
 app = FastAPI()
@@ -123,3 +123,26 @@ async def article_long_polling_receive(last_index: int = 0):
         "messages": messages[last_index:],
         "last_index": len(messages)
     })
+
+@app.websocket('/article/websocket/demo/hello')
+async def article_websocket_demo_hello(websocket: WebSocket):
+    await websocket.accept()
+
+    data = await websocket.receive_text()
+    await websocket.send_text(f'Hello from Server, {data.split(' ')[-1]}!')
+    await asyncio.sleep(5)
+    await websocket.close(code=1000, reason='Bye!')
+
+clients: list[WebSocket] = []
+
+@app.websocket('/article/websocket/chat/ws')
+async def article_websocket_chat_ws(websocket: WebSocket):
+    await websocket.accept()
+    clients.append(websocket)
+    try:
+        while True:
+            message = await websocket.receive_text()
+            for client in clients:
+                await client.send_text(message)
+    except WebSocketDisconnect:
+        clients.remove(websocket)
