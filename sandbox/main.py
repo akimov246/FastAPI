@@ -4,7 +4,7 @@ import time
 
 from fastapi import FastAPI, Form, File, UploadFile, Header, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from starlette.requests import Request
 from pathlib import Path
 from pydantic import BaseModel
@@ -124,16 +124,19 @@ async def article_long_polling_receive(last_index: int = 0):
         "last_index": len(messages)
     })
 
+
 @app.websocket('/article/websocket/demo/hello')
 async def article_websocket_demo_hello(websocket: WebSocket):
     await websocket.accept()
 
     data = await websocket.receive_text()
-    await websocket.send_text(f'Hello from Server, {data.split(' ')[-1]}!')
+    await websocket.send_text(f'Hello from Server, {data.split(" ")[-1]}!')
     await asyncio.sleep(5)
     await websocket.close(code=1000, reason='Bye!')
 
+
 clients: list[WebSocket] = []
+
 
 @app.websocket('/article/websocket/chat/ws')
 async def article_websocket_chat_ws(websocket: WebSocket):
@@ -146,3 +149,17 @@ async def article_websocket_chat_ws(websocket: WebSocket):
                 await client.send_text(message)
     except WebSocketDisconnect:
         clients.remove(websocket)
+
+
+async def event_generator():
+    yield 'retry: 10000\n'
+    for i in range(1, 4):
+        yield f'data: {i}\n\n'
+        i += 1
+        await asyncio.sleep(3)
+    yield f'event: bye\ndata: пока-пока\n\n'
+
+
+@app.get('/article/server-sent-events')
+async def article_server_sent_events():
+    return StreamingResponse(event_generator(), media_type='text/event-stream')
