@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Первые шаги</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Первые шаги</h1>
+        <p>Самый простой файл FastAPI может выглядеть так:</p>
+<pre class="line-numbers"><code class="language-py">from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/")
+async def root():
+    return {"message": "Hello world"}</code></pre>
+        <p>Скопируйте это в файл <code>main.py</code>.</p>
+        <p>Запустите сервер в режиме реального времени:</p>
+        <fieldset>
+            <legend>bash</legend>
+                    <pre><code class="language-bash">fastapi dev main.py</code></pre>
+        </fieldset>
+        <p>В выводе будет строка примерно такого вида:</p>
+        <pre><code class="language-bash">INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)</code></pre>
+        <p>Эта строка показывает URL, по которому ваше приложение доступно на локальной машине.</p>
+
+        <h2>Проверьте</h2>
+        <p>Откройте браузер по адресу: <a target="_blank" href="http://127.0.0.1:8000">http://127.0.0.1:8000</a>.</p>
+        <p>Вы увидите JSON-ответ вида:</p>
+        <pre><code class="language-json">{"message": "Hello World"}</code></pre>
+
+        <h2>Интерактивная документация API</h2>
+        <p>Теперь перейдите по адресу: <a target="_blank" href="http://127.0.0.1:8000/docs">http://127.0.0.1:8000/docs</a>.</p>
+        <p>Вы увидите автоматически сгенерированную интерактивную документацию по API (предоставлено
+        <a target="_blank" href="https://github.com/swagger-api/swagger-ui">Swagger UI</a>).</p>
+
+        <h2>Альтернативная документация API</h2>
+        <p>И теперь перейдите по адресу <a target="_blank" href="http://127.0.0.1:8000/redoc">http://127.0.0.1:8000/redoc</a>.</p>
+        <p>Вы увидите альтернативную автоматически сгенерированную документацию
+        (предоставлено <a target="_blank" href="https://github.com/Rebilly/ReDoc">ReDoc</a>).</p>
+
+        <h2>OpenAPI</h2>
+        <p><b>FastAPI</b> генерирует «схему» всего вашего API, используя стандарт <b>OpenAPI</b> для описания API.</p>
+        <h3>«Схема»</h3>
+        <p>«Схема» - это определение или описание чего-либо. Не код, который это реализует, а только абстрактное
+        описание.</p>
+
+        <h3>«Схема» API</h3>
+        <p>В данном случае <a target="_blank" href="https://github.com/OAI/OpenAPI-Specification">OpenAPI</a> -
+        это спецификация, которая определяет, как описывать схему вашего API.</p>
+        <p>Это определение схемы включает пути вашего API, возможные параметры, которые они принимают, и т.п.</p>
+
+        <h3>«Схема» данных</h3>
+        <p>Термин «схема» также может относиться к форме некоторых данных, например, к содержимому JSON.</p>
+        <p>В таком случае это будут атрибуты JSON, их типы данных и т.п.</p>
+
+        <h3>OpenAPI и JSON Schema</h3>
+        <p>OpenAPI определяет схему API для вашего API. И эта схема включает определения (или «схемы») данных,
+        отправляемых и получаемых вашим API, с использованием стандарта <b>JSON Schema</b> для схем данных JSON.</p>
+
+        <h3>Посмотрите <code>openapi.json</code></h3>
+        <p>Если вам интересно, как выглядит исходная схема OpenAPI, FastAPI автоматически генерирует JSON (схему)
+        с описанием всего вашего API.</p>
+        <p>Вы можете посмотреть ее напрямую по адресу:
+        <a target="_blank" href="http://127.0.0.1:8000/openapi.json">http://127.0.0.1:8000/openapi.json</a>.</p>
+
+        <h3>Для чего нужен OpenAPI</h3>
+        <p>Схема OpenAPI является основой для обеих включенных систем интерактивной документации.</p>
+        <p>Есть десятки альтернатив, все основаны на OpenAPI. Вы можете легко добавить любую из них в ваше приложение,
+        созданное с <b>FastAPI</b>.</p>
+        <p>Вы также можете использовать ее для автоматической генерации кода для клиентов, которые взаимодействуют
+        с вашим API. Например, для фронтенд-, мобильных или IoT-приложений.</p>
+
+        <h2>Рассмотрим поэтапно</h2>
+        <h3>Шаг 1: импортируйте <code>FastAPI</code></h3>
+        <pre data-line="1" class="line-numbers"><code class="language-py">from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/")
+async def root():
+    return {"message": "Hello world"}</code></pre>
+        <p><code>FastAPI</code> - это класс на Python, который представляет всю функциональность для вашего API.</p>
+        <div class="admonition note">
+            <h3>Технические детали</h3>
+            <p><code>FastAPI</code> - это класс, который напрямую наследуется от <code>Starlette</code>.</p>
+            <p>Вы можете использовать весь функционал
+            <a target="_blank" href="https://www.starlette.dev/">Starlette</a> и в <code>FastAPI</code>.</p>
+        </div>
+
+        <h3>Шаг 2: создайте экземпляр <code>FastAPI</code></h3>
+        <pre data-line="3" class="line-numbers"><code class="language-py">from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/")
+async def root():
+    return {"message": "Hello world"}</code></pre>
+        <p>Здесь переменная <code>app</code> будет экземпляром класс <code>FastAPI</code>.</p>
+        <p>Это будет основная точка взаимодействия для создания вашего API.</p>
+
+        <h3>Шаг 3: создайте операцию пути (path operation)</h3>
+        <h3>Путь (path)</h3>
+        <p>Здесь «путь» - это последняя часть URL, начиная с первого символа <code>/</code>.</p>
+        <p>Итак, в таком URL:</p>
+        <pre><code class="language-">https://example.com/items/foo</code></pre>
+        <p>...путь будет:</p>
+        <pre><code class="language-">/items/foo</code></pre>
+        <div class="admonition info">
+            <h3>Информация</h3>
+            <p>«Путь» также часто называют «эндпоинт» или «маршрут».</p>
+        </div>
+        <p>При создании API «путь» - это основной способ разделения «задач» и «ресурсов».</p>
+        <h3>Операция (operation)</h3>
+        <p>«Операция» здесь - это один из HTTP-«методов».</p>
+        <p>Один из:</p>
+        <ul>
+            <li>
+                <p><code>POST</code></p>
+            </li>
+            <li>
+                <p><code>GET</code></p>
+            </li>
+            <li>
+                <p><code>PUT</code></p>
+            </li>
+            <li>
+                <p><code>DELETE</code></p>
+            </li>
+        </ul>
+        <p>...и более экзотические:</p>
+        <ul>
+            <li>
+                <p><code>OPTIONS</code></p>
+            </li>
+            <li>
+                <p><code>HEAD</code></p>
+            </li>
+            <li>
+                <p><code>PATCH</code></p>
+            </li>
+            <li>
+                <p><code>TRACE</code></p>
+            </li>
+        </ul>
+        <p>В протоколе HTTP можно обращаться к каждому пути, используя один (или несколько) из этих «методов».</p>
+        <p>При создании API обычно используются конкретные HTTP-методы для выполнения конкретных действий.</p>
+        <p>Обычно используют:</p>
+        <ul>
+            <li>
+                <p><code>POST</code>: создать данные.</p>
+            </li>
+            <li>
+                <p><code>GET</code>: прочитать данные.</p>
+            </li>
+            <li>
+                <p><code>PUT</code>: обновить данные.</p>
+            </li>
+            <li>
+                <p><code>DELETE</code>: удалить данные.</p>
+            </li>
+        </ul>
+        <p>Таким образом, в OpenAPI каждый HTTP-метод называется «операцией».</p>
+        <p>Мы тоже будем называть из «операциями».</p>
+
+        <h3>Определите декоратор операции пути (path operation decorator)</h3>
+        <pre data-line="5" class="line-numbers"><code class="language-py">from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/")
+async def root():
+    return {"message": "Hello world"}</code></pre>
+        <p><code>@app.get("/")</code> сообщает <b>FastAPI</b>, что функция прямо под ним отвечает за обработку
+        запросов, поступающих:</p>
+        <ul>
+            <li>
+                <p>По пути <code>/</code>.</p>
+            </li>
+            <li>
+                <p>С использованием <code>get</code> операции.</p>
+            </li>
+        </ul>
+        <div class="admonition info">
+            <h3>Информация о <code>@decorator</code></h3>
+            <p>Синтаксис <code>@something</code> в Python называется «декоратор».</p>
+            <p>Его размещают над функцией. Как красивая декоративная шляпа (кажется, отсюда и пошел термин).</p>
+            <p>«Декоратор» берет функцию ниже и делает с ней что-то.</p>
+            <p>В нашем случае этот декоратор сообщает <b>FastAPI</b>, что функция ниже соответствует <b>пути</b>
+            <code>/</code> с <b>операцией</b> <code>get</code>.</p>
+            <p>Это и есть «декоратор операции пути».</p>
+        </div>
+        <p>Можно также использовать другие операции:</p>
+        <ul>
+            <li>
+                <p><code>@app.post()</code></p>
+            </li>
+            <li>
+                <p><code>@app.put()</code></p>
+            </li>
+            <li>
+                <p><code>@app.delete()</code></p>
+            </li>
+        </ul>
+        <p>И более экзотические:</p>
+        <ul>
+            <li>
+                <p><code>@app.options()</code></p>
+            </li>
+            <li>
+                <p><code>@app.head()</code></p>
+            </li>
+            <li>
+                <p><code>@app.patch()</code></p>
+            </li>
+            <li>
+                <p><code>@app.trace()</code></p>
+            </li>
+        </ul>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Вы можете использовать каждый метод (HTTP-операцию) так, как считаете нужным.</p>
+            <p><b>FastAPI</b> не навязывает какого-либо конкретного смысла.</p>
+            <p>Эта информация дана как рекомендация, а не требование.</p>
+            <p>Например, при использовании GraphQL обычно все действия выполняются только с помощью POST-операций.</p>
+        </div>
+
+        <h3>Шаг 4: определите функцию операции пути</h3>
+        <p>Вот наша «функция операции пути»:</p>
+        <ul>
+            <li>
+                <p><b>Путь</b>: <code>/</code>.</p>
+            </li>
+            <li>
+                <p><b>Операция</b>: <code>get</code>.</p>
+            </li>
+            <li>
+                <p><b>Функция</b>: функция ниже «декоратора» (ниже <code>@app.get("/")</code>).</p>
+            </li>
+        </ul>
+        <pre data-line="6" class="line-numbers"><code class="language-py">from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/")
+async def root():
+    return {"message": "Hello world"}</code></pre>
+        <p>Это функция на Python.</p>
+        <p><b>FastAPI</b> будет вызывать ее каждый раз, когда получает запрос к URL «<code>/</code>» с операцией
+        <code>GET</code>.</p>
+        <p>В данном случае это асинхронная (<code>async</code>) функция.</p>
+        <p>Вы также можете определить ее как обычную функцию вместо <code>async def</code>:</p>
+        <pre data-line="6" class="line-numbers"><code class="language-py">from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/")
+def root():
+    return {"message": "Hello world"}</code></pre>
+        <div class="admonition note">
+            <h3>Примечание</h3>
+            <p>Если вы не знаете, в чем разница, посмотрите
+            <a target="_blank" href="https://fastapi.tiangolo.com/ru/async/#in-a-hurry">Асинхронность: "Нет времени?"</a>.</p>
+        </div>
+
+        <h3>Шаг 5: верните содержимое</h3>
+        <pre data-line="7" class="line-numbers"><code class="language-py">from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/")
+async def root():
+    return {"message": "Hello world"}</code></pre>
+        <p>Вы можете вернуть <code>dict</code>, <code>list</code>, отдельные значения <code>str</code>, <code>int</code>
+        и т.д.</p>
+        <p>Также можно вернуть модели Pydentic (подробнее об этом позже).</p>
+        <p>Многие другие объекты и модели будут автоматически преобразованы в JSON (включая ORM и т.п.). Попробуйте
+        использовать те, что вам привычнее, с высокой вероятностью они уже поддерживаются.</p>
+
+        <h2>Резюме</h2>
+        <ul>
+            <li>
+                <p>Импортируйте <code>FastAPI</code>.</p>
+            </li>
+            <li>
+                <p>Создайте экземпляр <code>app</code>.</p>
+            </li>
+            <li>
+                <p>Напишите <b>декоратор операции пути</b>, например, <code>@app.get("/")</code>.</p>
+            </li>
+            <li>
+                <p>Определите <b>функцию операции пути</b>, например, <code>def root(): ...</code>.</p>
+            </li>
+            <li>
+                <p>Запустите сервер разработки командой <code>fastapi dev</code>.</p>
+            </li>
+        </ul>
+    </article>
+</body>
+</html>
