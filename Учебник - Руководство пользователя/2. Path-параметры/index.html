@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Path-параметры</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Path-параметры</h1>
+        <p>Вы можете определить «параметры» или «переменные» пути, используя синтаксис форматированных строк Python:</p>
+<pre data-line="6-7" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+
+app = FastAPI()
+
+
+@app.get("/items/{item_id}")
+async def read_item(item_id):
+    return {"item_id": item_id}</code></pre>
+        <p>Значение параметры пути <code>item_id</code> будет передано в функцию в качестве аргумента <code>item_id</code>.</p>
+        <p>Если запустите этот пример и перейдете по адресу:
+        <a target="_blank" href="http://127.0.0.1:8000/items/foo">http://127.0.0.1:8000/items/foo</a>, то увидите ответ:</p>
+        <pre><code class="language-json">{"item_id": "foo"}</code></pre>
+
+        <h2>Параметры пути с типами</h2>
+        <p>Вы можете объявить тип параметра пути в функции, используя стандартные аннотации типов Python:</p>
+<pre data-line="7" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+
+app = FastAPI()
+
+
+@app.get("/items/{item_id}")
+async def read_item(item_id: int):
+    return {"item_id": item_id}</code></pre>
+        <p>Здесь <code>item_id</code> объявлен типом <code>int</code>.</p>
+        <div class="admonition note">
+            <h3>Заметка</h3>
+            <p>Это обеспечит поддержку редактора кода внутри функции (проверка ошибок, автозавершение и т.п.)</p>
+        </div>
+
+        <h2><abbr title="также известное как: сериализация, парсинг, маршаллинг">Преобразование</abbr> данных</h2>
+        <p>Если запустите этот пример и перейдете по адресу:
+        <a target="_blank" href="http://127.0.0.1:8000/items/3">http://127.0.0.1:8000/items/3</a>, то увидите ответ:</p>
+        <pre><code class="language-json">{"item_id": 3}</code></pre>
+        <div class="admonition note">
+            <h3>Заметка</h3>
+            <p>Обратите внимание на значение <code>3</code>, которое получила (и вернула) функция. Это целочисленный
+            Python <code>int</code>, а не строка <code>"3"</code>.</p>
+            <p>Используя такое объявление типов, <b>FastAPI</b> выполняет автоматический
+            <abbr title="преобразование строк из HTTP-запроса в типы данных Python">«парсинг»</abbr> запросов.</p>
+        </div>
+
+        <h2>Валидация данных</h2>
+        <p>Если откроете браузер по адресу
+        <a target="_blank" href="http://127.0.0.1:8000/items/foo">http://127.0.0.1:8000/items/foo</a>, то увидите интересную
+        HTTP-ошибку.</p>
+        <p>Из-за того, что параметр пути <code>item_id</code> имеет значение <code>"foo"</code>, которое не является
+        типом <code>int</code>.</p>
+        <p>Та же ошибка возникнет, если вместо <code>int</code> передать <code>float</code>, например:
+        <a target="_blank" href="http://127.0.0.1:8000/items/4.2">http://127.0.0.1:8000/items/4.2</a>.</p>
+        <div class="admonition note">
+            <h3>Заметка</h3>
+            <p><b>FastAPI</b> обеспечивает валидацию данных, используя все те же определения типов.</p>
+            <p>Обратите внимание, что в тексте ошибки явно указано место, не проведшее проверку.</p>
+            <p>Это очень полезно при разработке и отладке кода, который взаимодействует с API.</p>
+        </div>
+
+        <h2>Документация</h2>
+        <p>И теперь, когда откроете браузер по адресу:
+        <a target="_blank" href="http://127.0.0.1:8000/docs">http://127.0.0.1:8000/docs</a>, то увидите автоматически
+        сгенерированную документацию API.</p>
+        <div class="admonition note">
+            <h3>Заметка</h3>
+            <p>Еще раз, просто используя определения типов, <b>FastAPI</b> обеспечивает автоматическую интерактивную
+            документацию.</p>
+            <p>Обратите внимание, что параметр пути объявлен целочисленным.</p>
+        </div>
+
+        <h2>Преимущества стандартизации, альтернативная документация</h2>
+        <p>Поскольку сгенерированная схема соответствует стандарту
+        <a target="_blank" href="https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.1.0.md">OpenAPI</a>,
+        ее можно использовать со множеством совместимых инструментов.</p>
+        <p>Именно поэтому, <b>FastAPI</b> сам предоставляет альтернативную документацию API (используя ReDoc),
+        которую можно получить по адресу:
+        <a target="_blank" href="http://127.0.0.1:8000/redoc">http://127.0.0.1:8000/redoc</a>.</p>
+        <p>По той же причине, есть множество совместимых инструментов, включая инструменты генерации кода для многих
+        языков.</p>
+
+        <h2>Pydantic</h2>
+        <p>Вся проверка данных выполняется под капотом с помощью
+        <a target="_blank" href="https://docs.pydantic.dev/">Pydantic</a>. Поэтому вы можете быть уверены в качестве
+        обработки данных.</p>
+        <p>Вы можете использовать в аннотациях как простые типы данных, вроде <code>str</code>, <code>float</code>,
+        <code>bool</code>, так и более сложные типы.</p>
+        <p>Некоторые из них рассматриваются в следующих главах руководства.</p>
+
+        <h2>Порядок имеет значение</h2>
+        <p>При создании <i>операции пути</i> можно столкнуться с ситуацией, когда путь является фиксированным.</p>
+        <p>Например, <code>/users/me</code>. Предположим, что это путь для получения данных о текущем пользователе.</p>
+        <p>У вас также может быть путь <code>users/{user_id}</code>, чтобы получить данные о конкретном пользователе
+        по его ID.</p>
+        <p>Поскольку <i>операции пути</i> выполняются в порядке их объявления, необходимо, чтобы путь для
+        <code>users/me</code> был объявлен раньше, чем путь для <code>/users/{user_id}</code>:</p>
+<pre data-line="6, 11" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+
+app = FastAPI()
+
+
+@app.get("/users/me")
+async def read_user_me():
+    return {"user_id": "the current user"}
+
+
+@app.get("/users/{user_id}")
+async def read_user(user_id: str):
+    return {"user_id": user_id}</code></pre>
+        <p>Иначе путь для <code>/users/{user_id}</code> также будет соответствовать <code>/users/me</code>,
+        «подразумевая», что он получает параметр <code>user_id</code> со значением <code>"me"</code>.</p>
+        <p>Аналогично, вы не можете переопределить операцию с путем:</p>
+<pre data-line="6, 11" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+
+app = FastAPI()
+
+
+@app.get("/users")
+async def read_users():
+    return ["Rick", "Morty"]
+
+
+@app.get("/users")
+async def read_users2():
+    return ["Bean", "Elfo"]</code></pre>
+        <p>Первый будет выполняться всегда, так как путь совпадает первым.</p>
+
+        <h2>Предопределенные значения</h2>
+        <p>Что если нам нужно заранее определить допустимые <i>параметры пути</i>, которые <i>операция пути</i>
+        может принимать? В таком случае можно использовать стандартное перечисление <code>Enum</code> Python.</p>
+
+        <h3>Создание класса <code>Enum</code></h3>
+        <p>Импортируйте <code>Enum</code> и создайте подкласс, который наследуется от <code>str</code> и <code>Enum</code>.</p>
+        <p>Мы наследуемся от <code>str</code>, чтобы документация API могла понять, что значения должны быть типа
+        <code>string</code> и отображалась правильно.</p>
+        <p>Затем создайте атрибуты класса с фиксированными допустимыми значениями:</p>
+<pre data-line="1, 6-9" class="line-numbers"><code class="language-python">from enum import Enum
+
+from fastapi import FastAPI
+
+
+class ModelName(str, Enum):
+    alexnet = "alexnet"
+    resnet = "resnet"
+    lenet = "lenet"
+
+
+app = FastAPI()
+
+
+@app.get("/models/{model_name}")
+async def get_model(model_name: ModelName)
+    if model_name is ModelName.alexnet:
+        return {"model_name": model_name, "message": "Deep Learning FTW!"}
+
+    if model_name.value == "lenet":
+        return {"model_name": model_name, "message": "LeCNN all the images"}
+
+    return {"model_name": model_name, "message": "Have some residuals"}</code></pre>
+
+        <h3>Определение параметра пути</h3>
+        <p>Определение <i>параметра пути</i>, используя в аннотации тип класса перечисления (<code>ModelName</code>),
+        созданный ранее:</p>
+<pre data-line="16" class="line-numbers"><code class="language-python">from enum import Enum
+
+from fastapi import FastAPI
+
+
+class ModelName(str, Enum):
+    alexnet = "alexnet"
+    resnet = "resnet"
+    lenet = "lenet"
+
+
+app = FastAPI()
+
+
+@app.get("/models/{model_name}")
+async def get_model(model_name: ModelName)
+    if model_name is ModelName.alexnet:
+        return {"model_name": model_name, "message": "Deep Learning FTW!"}
+
+    if model_name.value == "lenet":
+        return {"model_name": model_name, "message": "LeCNN all the images"}
+
+    return {"model_name": model_name, "message": "Have some residuals"}</code></pre>
+
+        <h3>Проверьте документацию</h3>
+        <p>Поскольку доступные значения <i>параметра пути</i> определены заранее, интерактивная документация может
+        наглядно их отображать.</p>
+
+        <h3>Работа с перечислениями в Python</h3>
+        <p>Значение <i>параметра пути</i> будет <i>элементом перечисления</i>.</p>
+
+        <h4>Сравнение элементов перечисления</h4>
+        <p>Вы можете сравнить это значение с <i>элементом перечисления</i> класса <code>ModelName</code>:</p>
+<pre data-line="17" class="line-numbers"><code class="language-python">from enum import Enum
+
+from fastapi import FastAPI
+
+
+class ModelName(str, Enum):
+    alexnet = "alexnet"
+    resnet = "resnet"
+    lenet = "lenet"
+
+
+app = FastAPI()
+
+
+@app.get("/models/{model_name}")
+async def get_model(model_name: ModelName)
+    if model_name is ModelName.alexnet:
+        return {"model_name": model_name, "message": "Deep Learning FTW!"}
+
+    if model_name.value == "lenet":
+        return {"model_name": model_name, "message": "LeCNN all the images"}
+
+    return {"model_name": model_name, "message": "Have some residuals"}</code></pre>
+
+        <h4>Получение значения перечисления</h4>
+        <p>Можно получить фактическое значение (в данном случае - <code>str</code>) с помощью <code>model_name.value</code>
+        или в общем случае <code>your_enum_member.value</code>:</p>
+<pre data-line="20" class="line-numbers"><code class="language-python">from enum import Enum
+
+from fastapi import FastAPI
+
+
+class ModelName(str, Enum):
+    alexnet = "alexnet"
+    resnet = "resnet"
+    lenet = "lenet"
+
+
+app = FastAPI()
+
+
+@app.get("/models/{model_name}")
+async def get_model(model_name: ModelName)
+    if model_name is ModelName.alexnet:
+        return {"model_name": model_name, "message": "Deep Learning FTW!"}
+
+    if model_name.value == "lenet":
+        return {"model_name": model_name, "message": "LeCNN all the images"}
+
+    return {"model_name": model_name, "message": "Have some residuals"}</code></pre>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Значение <code>"lenet"</code> также можно получить с помощью <code>ModelName.lenet.value</code>.</p>
+        </div>
+
+        <h4>Возврат элементов перечисления</h4>
+        <p>Из <i>операции пути</i> можно вернуть <i>элементы перечисления</i>, даже вложенные в тело JSON (например,
+        в <code>dict</code>).</p>
+        <p>Они будут преобразованы в соответствующие значения (в данном случае - в строки) перед их возвратом клиенту:</p>
+<pre data-line="18, 21, 23" class="line-numbers"><code class="language-python">from enum import Enum
+
+from fastapi import FastAPI
+
+
+class ModelName(str, Enum):
+    alexnet = "alexnet"
+    resnet = "resnet"
+    lenet = "lenet"
+
+
+app = FastAPI()
+
+
+@app.get("/models/{model_name}")
+async def get_model(model_name: ModelName)
+    if model_name is ModelName.alexnet:
+        return {"model_name": model_name, "message": "Deep Learning FTW!"}
+
+    if model_name.value == "lenet":
+        return {"model_name": model_name, "message": "LeCNN all the images"}
+
+    return {"model_name": model_name, "message": "Have some residuals"}</code></pre>
+        <p>Вы отправите клиенту такой JSON-ответ:</p>
+<pre><code class="language-json">{
+    "model_name": "alexnet",
+    "message": "Deep Learning FTW!"
+}</code></pre>
+
+        <h2>Path-параметры, содержащие пути</h2>
+        <p>Предположим, что есть <i>операция пути</i> с путем <code>/files/{file_path}</code>.</p>
+        <p>Но вам нужно, чтобы <code>file_path</code> сам содержал <i>путь</i>, например, <code>home/johndoe/myfile.txt</code>.</p>
+        <p>Тогда URL для этого файла будет такой: <code>/files/home/johndoe/myfile.txt</code>.</p>
+
+        <h3>Поддержка OpenAPI</h3>
+        <p>OpenAPI не поддерживает способов объявления <i>параметра пути</i>, содержащего внутри <i>путь</i>, так как
+        это может привести к сценариям, которые сложно определять и тестировать.</p>
+        <p>Тем не менее это можно сделать в <b>FastAPI</b>, используя один из внутренних инструментов Starlette.</p>
+        <p>Документация по-прежнему будет работать, хотя и не добавит никакой информации о том, что параметр должен
+        содержать путь.</p>
+
+        <h3>Конвертер пути</h3>
+        <p>Благодаря одной из опций Starlette, можете объявить <i>параметры пути</i>, содержащий <i>путь</i>,
+        используя URL вроде:</p>
+        <pre><code class="language-">/files/{file_path:path}</code></pre>
+        <p>В этом случае <code>file_path</code> - это имя параметра, а часть <code>:path</code>, указывает, что
+        параметр должен соответствовать любому <i>пути</i>.</p>
+        <p>Можете использовать так:</p>
+<pre><code class="language-python">from fastapi import FastAPI
+
+app = FastAPI()
+
+
+@app.get("/files/{file_path:path}")
+async def read_file(file_path: str):
+    return {"file_path": file_path}</code></pre>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Возможно, вам понадобится, чтобы параметр содержал <code>/home/johndoe/myfile.txt</code> с ведущим
+            слэшем (<code>/</code>).</p>
+            <p>В этом случае URL будет таким: <code>/files//home/johndoe/myfile.txt</code>, с двойным слэшем
+            (<code>//</code>) между <code>files</code> и <code>home</code>.</p>
+        </div>
+
+        <h2>Резюме</h2>
+        <p>Используя <b>FastAPI</b> вместе со стандартными объявлениями типов Python (короткими и интуитивно понятными),
+        вы получаете:</p>
+        <ul>
+            <li>
+                <p>Поддержку редактора кода (проверку ошибок, автозавершение и т.п.).</p>
+            </li>
+            <li>
+                <p><abbr title="преобразование строк из HTTP-запроса в типы данных Python">Парсинг</abbr> данных.</p>
+            </li>
+            <li>
+                <p>Валидацию данных.</p>
+            </li>
+            <li>
+                <p>Аннотации API и автоматическую документацию.</p>
+            </li>
+        </ul>
+        <p>И объявлять типы достаточно один раз.</p>
+        <p>Это, вероятно, является главным заметным преимуществом <b>FastAPI</b> по сравнению с альтернативными
+        фреймворками (кроме <abbr title="не считая оптимизаций">сырой</abbr> производительности).</p>
+    </article>
+</body>
+</html>

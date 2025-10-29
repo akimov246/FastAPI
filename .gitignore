@@ -1,5 +1,5 @@
 venv/
 .idea/
-/sandbox/upload
+/sandbox/upload/
 __pycache__/
 *.pyc

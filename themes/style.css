@@ -101,3 +101,7 @@ div.admonition.tip h3:first-of-type {
 div.admonition.tip h3:first-of-type::before {
     content: '🔥';
 }
+
+abbr {
+    cursor: help;
+}
