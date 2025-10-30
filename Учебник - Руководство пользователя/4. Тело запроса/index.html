@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Тело запроса</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Тело запроса</h1>
+        <p>Когда вам необходимо отправить данные из клиента (например, браузера) в ваш API, вы отправляете их
+        как <b>тело запроса</b>.</p>
+        <p>Тело <b>запроса</b> - это данные, отправляемые клиентом в ваш API. Тело <b>ответа</b> - это данные, которые
+        ваш API отправляет клиенту.</p>
+        <p>Ваш API почти всегда должен отправлять тело <b>ответа</b>. Но клиентам не обязательно всегда отправлять
+        <b>тело запроса</b>: иногда они запрашивают только путь, возможно с некоторыми параметрами запроса, но без тела.</p>
+        <p>Чтобы объявить тело <b>запроса</b>, используйте модели
+        <a target="_blank" href="https://docs.pydantic.dev/">Pydantic</a>, со всей их мощью и преимуществами.</p>
+        <div class="admonition info">
+            <h3>Информация</h3>
+            <p>Чтобы отправить данные, используйте один из методов: <code>POST</code> (чаще всего), <code>PUT</code>,
+            <code>DELETE</code> или <code>PATCH</code>.</p>
+            <p>Отправка тела с запросом <code>GET</code> имеет неопределенное поведение в спецификациях, тем не менее
+            это поддерживается FastAPI, но только для очень сложных/крайних случаев использования.</p>
+            <p>Поскольку это не рекомендуется, интерактивная документация не будет отображать информацию для тела
+            при использовании <code>GET</code>, а промежуточные прокси-серверы могут не поддерживать такой вариант
+            запроса.</p>
+        </div>
+
+        <h2>Импортируйте <code>BaseModel</code> из Pydantic</h2>
+        <p>Первое, что нужно сделать, - импортировать <code>BaseModel</code> из пакета <code>pydantic</code>:</p>
+<pre data-line="2" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from pydantic import BaseModel
+
+
+class Item(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+
+
+app = FastAPI()
+
+
+@app.post("/items")
+async def create_item(item: Item):
+    return item</code></pre>
+
+        <h2>Создайте модель данных</h2>
+        <p>Затем опишите свою модель данных как класс, наследующийся от <code>BaseModel</code>.</p>
+        <p>Используйте стандартные типы Python для всех атрибутов:</p>
+<pre data-line="5-9" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from pydantic import BaseModel
+
+
+class Item(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+
+
+app = FastAPI()
+
+
+@app.post("/items")
+async def create_item(item: Item):
+    return item</code></pre>
+        <form>
+            <div class="labels">
+                <label>name:</label>
+                <label>descriptions:</label>
+                <label>price:</label>
+                <label>tax:</label>
+            </div>
+            <div class="inputs">
+                <input name="name" type="text">
+                <input name="description" type="text">
+                <input name="price" type="text">
+                <input name="tax" type="text">
+            </div>
+            <button type="submit">Отправить JSON</button>
+        </form>
+    </article>
+</body>
+</html>
