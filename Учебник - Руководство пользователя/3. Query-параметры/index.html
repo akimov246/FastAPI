@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Query-параметры</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Query-параметры</h1>
+        <p>Когда вы объявляете параметры функции, которые не являются параметрами пути, они автоматически интерпретируются
+        как «query»-параметры.</p>
+<pre data-line="9" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+
+app = FastAPI()
+
+fake_items_db = [{"item_name": "Foo"}, {"item_name": "Bar"}, {"item_name": "Baz"}]
+
+
+@app.get("/items")
+async def read_item(skip: int = 0, limit: int = 10):
+    return fake_items_db[skip: skip + limit]</code></pre>
+        <p>Query-параметры представляют из себя набор пар ключ-значение, которые идут после знака <code>?</code>
+        в URL-адресе, разделенные символами <code>&</code>.</p>
+        <p>Например, в этом URL-адресе:</p>
+        <pre><code class="language-">http://127.0.0.1:8000/items/?skip=0&limit=10</code></pre>
+        <p>...параметры запроса такие:</p>
+        <ul>
+            <li>
+                <p><code>skip</code>: со значением <code>0</code>.</p>
+            </li>
+            <li>
+                <p><code>limit</code>: со значением <code>10</code>.</p>
+            </li>
+        </ul>
+        <p>Будучи частью URL-адреса, они «по умолчанию» являются строками.</p>
+        <p>Но когда вы объявляете их с использованием типов Python (в примере выше, как <code>int</code>),
+        они конвертируются в указанный тип данных и проходят проверку на соответствие ему.</p>
+        <p>Все те же правила, которые применяются к path-параметрам, также применяются и query-параметрам:</p>
+        <ul>
+            <li>
+                <p>Поддержка от редактора кода (очевидно).</p>
+            </li>
+            <li>
+                <p><abbr title="преобразование строки, полученной из HTTP-запроса в Python данные">Парсинг</abbr> данных.</p>
+            </li>
+            <li>
+                <p>Проверка на соответствие данных (валидация).</p>
+            </li>
+            <li>
+                <p>Автоматическая документация.</p>
+            </li>
+        </ul>
+
+        <h2>Значения по умолчанию</h2>
+        <p>Поскольку query-параметры не являются фиксированной частью пути, они могут быть не обязательными и иметь
+        значения по умолчанию.</p>
+        <p>В примере выше значения по умолчанию равны <code>skip=0</code> и <code>limit=10</code>.</p>
+        <p>Таким образом, результат перехода по URL-адресу:</p>
+        <pre><code class="language-">http://127.0.0.1:8000/items</code></pre>
+        <p>Будет таким же, как если перейти используя параметры по умолчанию:</p>
+        <pre><code class="language-">http://127.0.0.1:8000/items?skip=0&limit=10</code></pre>
+        <p>Но если вы введете, например:</p>
+        <pre><code class="language-">http://127.0.0.1:8000/items?skip=20</code></pre>
+        <p>Значения параметров в вашей функции будут:</p>
+        <ul>
+            <li>
+                <p><code>skip=20</code>: потому что вы установили это в URL-адресе</p>
+            </li>
+            <li>
+                <p><code>limit=10</code>: т.к. это было значение по умолчанию.</p>
+            </li>
+        </ul>
+
+        <h2>Необязательные параметры</h2>
+        <p>Аналогично, вы можете объявлять необязательные query-параметры, установив их значение по умолчанию,
+        равное <code>None</code></p>
+<pre data-line="7" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+
+app = FastAPI()
+
+
+@app.get("/items/{item_id}")
+async def read_item(item_id: str, q: str | None = None):
+    if q:
+        return {"item_id": item_id,  "q": q}
+    return {"item_id": item_id}</code></pre>
+        <p>В этом случае, параметр <code>q</code> будет не обязательным и будет иметь значение <code>None</code>
+        по умолчанию.</p>
+        <div class="admonition note">
+            <h3>Важно</h3>
+            <p>Также обратите внимание, что <b>FastAPI</b> достаточно умен, чтобы заметить, что параметр
+            <code>item_id</code> является path-параметром, а <code>q</code> нет, поэтому, это параметр запроса.</p>
+        </div>
+
+        <h2>Преобразование типа параметра запроса</h2>
+        <p>Вы также можете объявлять параметры с типом <code>bool</code>, которые будут преобразованы соответственно:</p>
+<pre data-line="7" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+
+app = FastAPI()
+
+
+@app.get("/items/{item_id}")
+async def read_item(item_id: str, q: str | None = None, short: bool = False):
+    item = {"item_id": item_id}
+    if q:
+        item.update({"q": q})
+    if not short:
+        item.update({"description": "This is an amazing item that has a long description"})
+    return item</code></pre>
+        <p>В этом случае, если вы сделаете запрос:</p>
+        <pre><code class="language-">http://127.0.0.1:8000/items/foo?short=1</code></pre>
+        <p>или</p>
+        <pre><code class="language-">http://127.0.0.1:8000/items/foo?short=True</code></pre>
+        <p>или</p>
+        <pre><code class="language-">http://127.0.0.1:8000/items/foo?short=true</code></pre>
+        <p>или</p>
+        <pre><code class="language-">http://127.0.0.1:8000/items/foo?short=on</code></pre>
+        <p>или</p>
+        <pre><code class="language-">http://127.0.0.1:8000/items/foo?short=yes</code></pre>
+        <p>или в любом другом варианте написания (в верхнем регистре, с заглавной буквы, и т.п.), внутри вашей функции
+        параметр <code>short</code> будет иметь значение <code>True</code> типа данных <code>bool</code>.
+        В противном случае - <code>False</code>.</p>
+
+        <h2>Смешивание query-параметров и path-параметров</h2>
+        <p>Вы можете объявлять несколько query-параметров и path-параметров одновременно, <b>FastAPI</b> сам разберется,
+        что чем является.</p>
+        <p>И вы не обязаны объявлять их в каком-либо определенном порядке.</p>
+        <p>Они будут обнаружены по именам:</p>
+<pre data-line="6, 7" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+
+app = FastAPI()
+
+
+@app.get("/users/{user_id}/items/{item_id}")
+async def read_user_item(user_id: int, item_id: str, q: str | None = None, short: bool = False):
+    item = {"item_id": item_id, "owner_id": user_id}
+    if q:
+        item.update({"q": q})
+    if not short:
+        item.update("description": "This is an amazing item that has a long description")
+    return item</code></pre>
+
+        <h2>Обязательные query-параметры</h2>
+        <p>Когда вы объявляете значение по умолчанию для параметра, который не является path-параметром (в этом разделе,
+        мы пока что познакомились только с path-параметрами), то он не является обязательным.</p>
+        <p>Если вы не хотите задавать конкретное значение, но хотите сделать параметр необязательным, вы можете
+        установить значение по умолчанию равным <code>None</code>.</p>
+        <p>Но если вы хотите сделать query-параметр обязательным, вы можете просто не указывать значение по умолчанию:</p>
+<pre data-line="5-6" class="line-numbers"><code class="language-python">from fastapi from FastAPI
+
+app = FastAPI()
+
+@app.get("/objects/{object_id}")
+async def read_object(object_id: str, needy: str):
+    object = {"object_id": object_id, "needy": needy}
+    return object</code></pre>
+        <p>Здесь параметр запроса <code>needy</code> является обязательным параметром и типом данных <code>str</code>.</p>
+        <p>Если вы откроете в браузере URL-адрес, например:</p>
+        <pre><code class="language-">http://127.0.0.1:8000/objects/foo-object</code></pre>
+        <p>...без добавления обязательного параметра <code>needy</code>, вы увидите ошибку.</p>
+        <p>Поскольку <code>needy</code> является обязательным параметром, вам необходимо указать его в URL-адресе:</p>
+        <pre><code class="language-">http://127.0.0.1:8000/objects/foo-object?needy=sooooneedy</code></pre>
+        <p>...это будет работать:</p>
+<pre><code class="language-json">{
+    "object_id": "foo-object",
+    "needy": "sooooneedy"
+}</code></pre>
+        <p>Конечно, вы можете определить некоторые параметры как обязательные, некоторые - со значением по умолчанию,
+        а некоторые - полностью необязательные:</p>
+<pre data-line="7" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+
+app = FastAPI()
+
+
+@app.get("/objects/{object_id}")
+async def read_object(object_id: str, needy: str, skip: int = 0, limit: int | None = None):
+    object = {"object_id": object_id, "needy": needy, "skip": skip, "limit": limit}
+    return object</code></pre>
+        <p>В этом примере у нас есть 3 параметра запроса:</p>
+        <ul>
+            <li>
+                <p><code>needy</code>, обязательный <code>str</code></p>
+            </li>
+            <li>
+                <p><code>skip</code>, типа <code>int</code> и со значением по умолчанию <code>0</code>.</p>
+            </li>
+            <li>
+                <p><code>limit</code>, необязательный <code>int</code>.</p>
+            </li>
+        </ul>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Вы можете использовать класс <code>Enum</code> также, как ранее применяли его с
+            <a target="_blank" href="../2.%20Path-параметры/index.html">Path-параметрами</a>.</p>
+        </div>
+    </article>
+</body>
+</html>
