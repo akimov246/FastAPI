@@ -30,8 +30,23 @@
 
         <h2>Импортируйте <code>BaseModel</code> из Pydantic</h2>
         <p>Первое, что нужно сделать, - импортировать <code>BaseModel</code> из пакета <code>pydantic</code>:</p>
-<pre data-line="2" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+<pre data-line="3" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
+
+app = FastAPI()
+
+
+origins = ['*']
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class Item(BaseModel):
@@ -39,9 +54,6 @@ class Item(BaseModel):
     description: str | None = None
     price: float
     tax: float | None = None
-
-
-app = FastAPI()
 
 
 @app.post("/items")
@@ -51,8 +63,23 @@ async def create_item(item: Item):
         <h2>Создайте модель данных</h2>
         <p>Затем опишите свою модель данных как класс, наследующийся от <code>BaseModel</code>.</p>
         <p>Используйте стандартные типы Python для всех атрибутов:</p>
-<pre data-line="5-9" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+<pre data-line="20-24" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
+
+app = FastAPI()
+
+
+origins = ['*']
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class Item(BaseModel):
@@ -62,27 +89,234 @@ class Item(BaseModel):
     tax: float | None = None
 
 
+@app.post("/items")
+async def create_item(item: Item):
+    return item</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">name:</label>
+            <label slot="labels">description:</label>
+            <label slot="labels">price:</label>
+            <label slot="labels">tax:</label>
+            <input slot="inputs" type="text" name="url" value="http://127.0.0.1:8000/items">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="name">
+            <input slot="inputs" type="text" name="description">
+            <input slot="inputs" type="text" name="price">
+            <input slot="inputs" type="text" name="tax">
+            <button slot="buttons">Отправить JSON</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Так же, как при объявлении параметров запроса: когда атрибут модели имеет значение по умолчанию, он не
+        обязателен. Иначе он обязателен. Используйте <code>None</code>, чтобы сделать его просто необязательным.</p>
+        <p>Например, модель выше описывает такой JSON «объект» (или Python <code>dict</code>):</p>
+<pre><code class="language-json">{
+    "name": "Foo",
+    "description": "An optional description",
+    "price": 45.2,
+    "tax": 3.5
+}</code></pre>
+        <p>...так как <code>description</code> и <code>tax</code> являются необязательными (со значением по умолчанию
+        <code>None</code>), такой JSON «объект» тоже будет корректным:</p>
+<pre><code class="language-json">{
+    "name": "Foo",
+    "price": 45.2
+}</code></pre>
+
+        <h2>Объявите ее как параметр</h2>
+        <p>Чтобы добавить ее в вашу <i>операцию пути</i>, объявите ее так же, как вы объявляли параметры пути и
+        параметры запроса:</p>
+<pre data-line="28" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+
 app = FastAPI()
+
+
+origins = ['*']
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class Item(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
 
 
 @app.post("/items")
 async def create_item(item: Item):
     return item</code></pre>
-        <form>
-            <div class="labels">
-                <label>name:</label>
-                <label>descriptions:</label>
-                <label>price:</label>
-                <label>tax:</label>
-            </div>
-            <div class="inputs">
-                <input name="name" type="text">
-                <input name="description" type="text">
-                <input name="price" type="text">
-                <input name="tax" type="text">
-            </div>
-            <button type="submit">Отправить JSON</button>
-        </form>
+        <p>...и укажите тип параметра как созданную вами модель, <code>Item</code>.</p>
+
+        <h2>Результаты</h2>
+        <p>Всего лишь этой аннотацией типов Python <b>FastAPI</b>:</p>
+        <ul>
+            <li>
+                <p>Считает тело запроса как JSON.</p>
+            </li>
+            <li>
+                <p>Приведет данные к соответствующим типам (если потребуется).</p>
+            </li>
+            <li>
+                <p>Проведет валидацию данных.</p>
+                <ul>
+                    <li>
+                        <p>Если данные некорректны, вернет понятную и наглядную ошибку, указывающую, где именно и что
+                        было некорректно.</p>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <p>Передаст полученные данные в параметр <code>item</code>.</p>
+                <ul>
+                    <li>
+                        <p>Поскольку внутри функции вы объявили его типом <code>Item</code>, у вас будет поддержка
+                        со стороны редактора кода (автозавершение и т.п.) для всех атрибутов и их типов.</p>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <p>Сгенерирует определение <a target="_blank" href="https://json-schema.org/">JSON Schema</a> для вашей
+                модели; вы можете использовать их и в других местах, если это имеет смысл для вашего проекта.</p>
+            </li>
+            <li>
+                <p>Эти схемы будут частью сгенерированной схемы OpenAPI и будут использоваться автоматической
+                документацией <abbr title="User Interfaces - пользовательские интерфейсы">UIs</abbr>.</p>
+            </li>
+        </ul>
+
+        <h2>Автоматическая документация</h2>
+        <p>JSON Schema ваших моделей будет частью сгенерированной схемы OpenAPI и будет отображаться в интерактивной
+        документации API.</p>
+        <p><a target="_blank" href="http://127.0.0.1:8000/docs">http://127.0.0.1:8000/docs</a></p>
+        <p>А также они будут использоваться в документации API внутри каждой <i>операции пути</i>, где это требуется.</p>
+
+        <h2>Поддержка в редакторе кода</h2>
+        <p>В вашем редакторе кода внутри функции вы получите подсказки по типам и автозавершение повсюду (этого бы не
+        было, если бы вы получали <code>dict</code> вместо модели <code>Pydantic</code>).</p>
+        <p>Также вы получите проверку ошибок при некорректных операциях с типами.</p>
+
+        <h2>Использование модели</h2>
+        <p>Внутри функции вам доступны все атрибуты объекта модели напрямую:</p>
+<pre class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+
+app = FastAPI()
+
+
+origins = ['*']
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class Item(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+
+
+@app.post("/items")
+async def create_item(item: Item):
+    item_dict = item.model_dump()
+    if item.tax is not None:
+        price_with_tax = item.price + item.tax
+        item_dict.update({"price_with_tax": price_with_tax})
+    return item_dict</code></pre>
+
+        <h2>Тело запроса + параметры пути + параметры запроса</h2>
+        <p>Вы также можете одновременно объявить параметры <b>тела</b>, <b>пути</b> и <b>запроса</b>.</p>
+        <p><b>FastAPI</b> распознает каждый из них и возьмет данные из правильного источника.</p>
+<pre data-line="28" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+
+app = FastAPI()
+
+
+origins = ['*']
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class Item(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+
+
+@app.put("/items/{item_id}")
+async def update_item(item_id: int, item: Item, q: str | None = None):
+    result = {"item_id": item_id, **item.model_dump()}
+    if q:
+        result.update({"q": q})
+    return result</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">name:</label>
+            <label slot="labels">description:</label>
+            <label slot="labels">price:</label>
+            <label slot="labels">tax:</label>
+            <input slot="inputs" type="text" name="url" value="http://127.0.0.1:8000/items/1?q=query-parameter">
+            <input slot="inputs" type="text" name="method" value="PUT">
+            <input slot="inputs" type="text" name="name">
+            <input slot="inputs" type="text" name="description">
+            <input slot="inputs" type="text" name="price">
+            <input slot="inputs" type="text" name="tax">
+            <button slot="buttons">Отправить JSON</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Параметры функции будут распознаны следующим образом:</p>
+        <ul>
+            <li>
+                <p>Если параметр также объявлен в <b>пути</b>, он будет использоваться как параметр пути.</p>
+            </li>
+            <li>
+                <p>Если параметр имеет <b>скалярный тип</b> (например, <code>int</code>, <code>float</code>,
+                <code>str</code>, <code>bool</code> и т.п.), он будет интерпретирован как параметр <b>запроса</b>.</p>
+            </li>
+            <li>
+                <p>Если параметр объявлен как тип <b>модели Pydantic</b>, он будет интерпретирован как <b>тело</b>
+                запроса.</p>
+            </li>
+        </ul>
+        <div class="admonition note">
+            <h3>Заметка</h3>
+            <p>FastAPI понимает, что значение <code>q</code> не является обязательным из-за значения по умолчанию
+            <code>None</code>.</p>
+            <p>Аннотации типов <code>str | None</code> или <code>Union[str, None]</code> не используются FastAPI
+            для определения обязательности; он узнает, что параметр не обязателен, потому что у него есть значение
+            по умолчанию <code>None</code>.</p>
+            <p>Но добавление аннотаций типов позволит вашему редактору кода лучше вас поддерживать и обнаруживать
+            ошибки.</p>
+        </div>
     </article>
 </body>
 </html>
