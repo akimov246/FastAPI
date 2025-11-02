@@ -144,7 +144,7 @@ customElements.define('request-response-container', class extends HTMLElement {
             let method = inputs.at(1).value;
             let formData = new FormData();
             for (let input of inputs) {
-                if (input.name === 'url' || input.name === 'method') {
+                if (input.name.toLowerCase() === 'url' || input.name.toLowerCase() === 'method') {
                     continue;
                 }
                 if (input.value) {
@@ -152,13 +152,16 @@ customElements.define('request-response-container', class extends HTMLElement {
                 }
             }
             let data = Object.fromEntries(formData);
-            fetch(url, {
-                method: method,
-                headers: {
-                    'Content-type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            })
+            let requestInit = {
+                    method: method,
+                    headers: {
+                        'Content-type': 'application/json'
+                    }
+            }
+            if (method.toLowerCase() !== 'get') {
+                requestInit.body = JSON.stringify(data)
+            }
+            fetch(url, requestInit)
             .then(response => {
                 return response.json();
             })

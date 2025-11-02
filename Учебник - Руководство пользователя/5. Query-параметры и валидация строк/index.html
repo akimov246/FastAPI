@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Query-параметры и валидация строк</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Query-параметры и валидация строк</h1>
+        <p><b>FastAPI</b> позволяет определять дополнительную информацию и выполнять валидацию для ваших параметров.</p>
+        <p>Рассмотрим это приложение в качестве примера:</p>
+<pre data-line="16" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/items/example1")
+async def read_items(q: str | None = None):
+    results = {"items": [{"item_id": "Foo"}, {"item_id": "Bar"}]}
+    if q:
+        results.update({"q": q})
+    return results</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <input slot="inputs" name="url" value="http://127.0.0.1:8000/items/example1?q=query">
+            <input slot="inputs" name="method" value="GET">
+            <button slot="buttons" type="button">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Query-параметр <code>q</code> имеет тип <code>str | None</code>, это означает, что он имеет тип <code>str</code>,
+        но также может быть <code>None</code>. Значение по умолчанию действительно <code>None</code>, поэтому
+        FastAPI будет знать, что он не обязателен.</p>
+        <div class="admonition note">
+            <h3>Технические детали</h3>
+            <p>FastAPI поймет, что значение <code>q</code> не обязательно, из-за значения по умолчанию <code>None</code>.</p>
+            <p>Аннотация <code>str | None</code> позволит вашему редактору кода обеспечить лучшую поддержку и
+            находить ошибки.</p>
+        </div>
+
+        <h2>Дополнительная валидация</h2>
+        <p></p>
+    </article>
+</body>
+</html>
