@@ -50,7 +50,707 @@ async def read_items(q: str | None = None):
         </div>
 
         <h2>Дополнительная валидация</h2>
-        <p></p>
+        <p>Мы собираемся добавить ограничение: хотя <code>q</code> и не обязателен, когда он передан, <b>его длина
+        не должна превышать 50 символов</b>.</p>
+
+        <h3>Импорт <code>Query</code> и <code>Annotated</code></h3>
+        <p>Чтобы сделать это, сначала импортируйте:</p>
+        <ul>
+            <li>
+                <p><code>Query</code> из <code>fastapi</code>.</p>
+            </li>
+            <li>
+                <p><code>Annotated</code> из <code>typing</code>.</p>
+            </li>
+        </ul>
+<pre data-line="1, 3" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/items/example2")
+async def read_items(q: Annotated[str | None, Query(max_length=50)] = None):
+    results = {"items": [{"item_id": "Foo"}, {"item_id": "Bar"}]}
+    if q:
+        results.update({"q": q})
+    return results</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <input slot="inputs" name="url" value="http://127.0.0.1:8000/items/example2?q=abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwx">
+            <input slot="inputs" name="method" value="GET">
+            <button slot="buttons" type="button">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h2>Использовать <code>Annotated</code> в типе для параметра <code>q</code></h2>
+        <p>У нас была такая аннотация типа:</p>
+        <pre><code class="language-python">q: str | None = None</code></pre>
+        <p>Мы «обернем» это в <code>Annotated</code>, и получится:</p>
+        <pre><code class="language-python">q: Annotated[str | None] = None</code></pre>
+        <p>Обе версии означают одно и то же: <code>q</code> - параметр, который может быть <code>str</code> или
+        <code>None</code>, и по умолчанию равен <code>None</code>.</p>
+
+        <h2>Добавим <code>Query</code> в <code>Annotated</code> для параметра <code>q</code></h2>
+        <p>Теперь, когда у нас есть <code>Annotated</code>, куда можно поместить дополнительную информацию
+        (в нашем случае - дополнительные правила валидации), добавим <code>Query</code> внутрь <code>Annotated</code>
+        и установим параметр <code>max_length</code> равным <code>50</code>:</p>
+<pre data-line="18" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/items/example2")
+async def read_items(q: Annotated[str | None, Query(max_length=50)] = None):
+    results = {"items": [{"item_id": "Foo"}, {"item_id": "Bar"}]}
+    if q:
+        results.update({"q": q})
+    return results</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <input slot="inputs" name="url" value="http://127.0.0.1:8000/items/example2?q=abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwx">
+            <input slot="inputs" name="method" value="GET">
+            <button slot="buttons" type="button">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Обратите внимание, что значение по умолчанию по-прежнему <code>None</code>, то есть параметр остается необязательным.</p>
+        <p>Но теперь, добавив <code>Query(max_length=50)</code> внутрь <code>Annotated</code>, мы говорим FastAPI,
+        что этому значению нужна <b>дополнительная валидация</b> - максимум 50 символов.</p>
+        <div class="admonition tip">
+            <h3>Совет</h3>
+            <p>Здесь мы используем <code>Query()</code>, потому что это <b>query-параметр</b>. Позже мы увидим другие -
+            <code>Path()</code>, <code>Body()</code>, <code>Header()</code> и <code>Cookie()</code>, - они также принимают
+            те же аргументы, что и <code>Query()</code>.</p>
+        </div>
+        <p>Теперь FastAPI будет:</p>
+        <ul>
+            <li>
+                <p><b>Валидировать</b> данные, удостоверяясь, что максимальная длина - 50 символов.</p>
+            </li>
+            <li>
+                <p>Показывать <b>понятную ошибку</b> клиенту, если данные невалидны.</p>
+            </li>
+            <li>
+                <p><b>Документировать</b> параметр в <i>операции пути</i> схемы OpenAPI (он будет показан в
+                <b>UI автоматической документации</b>).</p>
+            </li>
+        </ul>
+
+        <h2>Больше валидаций</h2>
+        <p>Можно также добавить параметр <code>min_length</code>:</p>
+<pre data-line="18" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/items/example3")
+async def read_items(q: Annotated[str | None, Query(min_length=3, max_length=50)] = None):
+    results = {"items": [{"item_id": "Foo"}, {"item_id": "Bar"}]}
+    if q:
+        results.update({"q": q})
+    return results</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <input slot="inputs" name="url" value="http://127.0.0.1:8000/items/example3?q=123">
+            <input slot="inputs" name="method" value="GET">
+            <button slot="buttons" type="button">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h2>Регулярные выражения</h2>
+        <p>Вы можете определить
+        <abbr title="Регулярное выражение (regex, regexp) - это последовательность символов, задающая шаблон поиска для строк.">регулярное выражение</abbr>
+        <code>pattern</code>, которому должен соответствовать параметр:</p>
+<pre data-line="18" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/items/example4")
+async def read_items(q: Annotated[str | None, Query(min_length=3, max_length=50, pattern="^fixedquery$")] = None):
+    results = {"items": [{"item_id": "Foo"}, {"item_id": "Bar"}]}
+    if q:
+        results.update({"q": q})
+    return results</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <input slot="inputs" name="url" value="http://127.0.0.1:8000/items/example4?q=fixedquery">
+            <input slot="inputs" name="method" value="GET">
+            <button slot="buttons" type="button">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Данный шаблон регулярного выражения проверяет, что полученное значение параметра:</p>
+        <ul>
+            <li>
+                <p><code>^</code>: начинается со следующих символов, до них нет символов.</p>
+            </li>
+            <li>
+                <p><code>fixedquery:</code> имеет точное значение <code>fixedquery</code>.</p>
+            </li>
+            <li>
+                <p><code>$:</code> заканчивается здесь, после <code>fixedquery</code> нет никаких символов.</p>
+            </li>
+        </ul>
+
+        <h2>Значения по умолчанию</h2>
+        <p>Конечно, можно использовать и другие значения по умолчанию, не только <code>None</code>.</p>
+        <p>Допустим, вы хотите объявить, что query-параметр <code>q</code> должен иметь <code>min_length</code> равный
+        <code>3</code> и значение по умолчанию <code>"fixedquery"</code>:</p>
+<pre data-line="18" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/items/example5")
+async def read_items(q: Annotated[str | None, Query(min_length=3)] = "fixedquery"):
+    results = {"items": [{"item_id": "Foo"}, {"item_id": "Bar"}]}
+    if q:
+        results.update({"q": q})
+    return results</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <input slot="inputs" name="url" value="http://127.0.0.1:8000/items/example5">
+            <input slot="inputs" name="method" value="GET">
+            <button slot="buttons" type="button">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <div class="admonition note">
+            <h3>Примечание</h3>
+            <p>Наличие значения по умолчанию любого типа, включая <code>None</code>, делает параметр необязательным.</p>
+        </div>
+
+        <h2>Обязательные параметры</h2>
+        <p>Когда не требуется объявлять дополнительные проверки или метаданные, можно сделать query-параметр <code>q</code>
+        обязательным, просто не указывая значение по умолчанию, например:</p>
+        <pre><code class="language-python">q: str</code></pre>
+        <p>Вместо:</p>
+        <pre><code class="language-python">q: str | None = None</code></pre>
+        <p>Но сейчас мы объявляем его через <code>Query</code>, например так:</p>
+        <pre><code class="language-python">q: Annotated[str | None, Query(min_length=3)] = None</code></pre>
+        <p>Поэтому, когда вам нужно объявить значение как обязательное при использовании <code>Query</code>, просто
+        не указывайте значение по умолчанию:</p>
+<pre data-line="18" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/items/example6")
+async def read_items(q: Annotated[str, Query(min_length=3)]):
+    results = {"items": [{"item_id": "Foo"}, {"item_id": "Bar"}]}
+    if q:
+        results.update({"q": q})
+    return results</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <input slot="inputs" name="url" value="http://127.0.0.1:8000/items/example6?q=required">
+            <input slot="inputs" name="method" value="GET">
+            <button slot="buttons" type="button">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h3>Обязательный, но может быть <code>None</code></h3>
+        <p>Можно объявить, что параметр может принимать <code>None</code>, но при этом остается обязательным. Это
+        заставит клиентов отправлять значение, даже если это значение - <code>None</code>.</p>
+        <p>Для этого объявите, что <code>None</code> - валидный тип, но просто не задавайте значение по умолчанию:</p>
+<pre data-line="18" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/items/example7")
+async def read_items(q: Annotated[str | None, Query(min_length=3)]):
+    results = {"items": [{"item_id": "Foo"}, {"item_id": "Bar"}]}
+    if q:
+        results.update({"q": q})
+    return results</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <input slot="inputs" name="url" value="http://127.0.0.1:8000/items/example7?q=None">
+            <input slot="inputs" name="method" value="GET">
+            <button slot="buttons" type="button">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h2>Query-параметр - список/несколько значений</h2>
+        <p>Когда вы явно объявляете query-параметр через <code>Query</code>, можно также указать, что он принимает
+        список значений, иначе говоря - несколько значений.</p>
+        <p>Например, чтобы объявить query-параметр <code>q</code>, который может встречаться в URL несколько раз,
+        можно написать:</p>
+<pre data-line="18" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/items/example8")
+async def read_items(q: Annotated[list[str] | None, Query()] = None):
+    query_items = {"q": q}
+    return query_items</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <input slot="inputs" name="url" value="http://127.0.0.1:8000/items/example8?q=foo&q=bar">
+            <input slot="inputs" name="method" value="GET">
+            <button slot="buttons" type="button">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Тогда при таком URL:</p>
+        <pre><code class="language-">http://127.0.0.1:8000/items/example8?q=foo&q=bar</code></pre>
+        <p>Вы получите множественные значения query-параметра <code>q</code> (<code>foo</code> и <code>bar</code>)
+        в виде Python-<code>list</code> внутри вашей <i>функции обработки пути</i>, в <i>параметре функции</i> <code>q</code>.</p>
+        <div class="admonition tip">
+            <h3>Совет</h3>
+            <p>Чтобы объявить query-параметр типа <code>list</code>, как в примере выше, нужно явно использовать
+            <code>Query()</code>, иначе он будет интерпретирован как тело запроса.</p>
+        </div>
+        <p>Интерактивная документация API обновится соответствующим образом и позволит передавать несколько значений:
+        <a target="_blank" href="http://127.0.0.1:8000/docs">http://127.0.0.1:8000/docs</a>.</p>
+
+        <h3>Query-параметр - список/несколько значений со значением по умолчанию</h3>
+        <p>Можно также определить значение по умолчанию как <code>list</code>, если ничего не передано:</p>
+<pre data-line="18" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/items/example9")
+async def read_items(q: Annotated[list[str], Query()] = ["foo", "bar"]):
+    query_items = {"q": q}
+    return query_items</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <input slot="inputs" name="url" value="http://127.0.0.1:8000/items/example9">
+            <input slot="inputs" name="method" value="GET">
+            <button slot="buttons" type="button">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h4>Просто <code>list</code></h4>
+        <p>Можно использовать <code>list</code> напрямую вместо <code>list[str]</code>:</p>
+<pre data-line="18" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/items/example10")
+async def read_items(q: Annotated[list, Query()] = []):
+    query_items = {"q": q}
+    return query_items</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <input slot="inputs" name="url" value="http://127.0.0.1:8000/items/example10">
+            <input slot="inputs" name="method" value="GET">
+            <button slot="buttons" type="button">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <div class="admonition note">
+            <h3>Технические детали</h3>
+            <p>Имейте в виду, что в этом случае FastAPI не будет проверять содержимое списка.</p>
+            <p>Например, <code>list[int]</code> проверит (и задокументирует), что элементы списка - целые числа.
+            А просто <code>list</code> - нет.</p>
+        </div>
+
+        <h2>Больше метаданных</h2>
+        <p>Можно добавить больше информации о параметре.</p>
+        <p>Эта информация будет включена в сгенерированную OpenAPI-схему и использована интерфейсами документации и
+        внешними инструментами.</p>
+        <div class="admonition note">
+            <h3>Технические детали</h3>
+            <p>Помните, что разные инструменты могут иметь разный уровень поддержки OpenAPI.</p>
+            <p>Некоторые из них пока могут не показывать всю дополнительную информацию, хотя в большинстве случаев
+            недостающая возможность уже запланирована к разработке.</p>
+        </div>
+        <p>Можно задать <code>title</code>:</p>
+<pre data-line="18" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/items/example11")
+async def read_items(q: Annotated[str | None, Query(title="Query string", min_length=3)] = None):
+    results = {"items": [{"item_id": "Foo"}, {"item_id": "Bar"}]}
+    if q:
+        results.update({"q": q})
+    return results</code></pre>
+        <p>И <code>description</code>:</p>
+<pre data-line="23" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/items/example11")
+async def read_items(
+    q: Annotated[
+        str | None,
+        Query(
+            title="Query string",
+            description="Query string for the items to search in the database that have a good match",
+            min_length=3
+        )
+    ] = None):
+    results = {"items": [{"item_id": "Foo"}, {"item_id": "Bar"}]}
+    if q:
+        results.update({"q": q})
+    return results</code></pre>
+        <p><a target="_blank" href="http://127.0.0.1:8000/docs#/default/read_items_items_example11_get">http://127.0.0.1:8000/docs#/default/read_items_items_example11_get</a></p>
+
+        <h2>Псевдонимы параметров</h2>
+        <p>Представьте, что вы хотите, чтобы параметр назывался <code>item-query</code>.</p>
+        <p>Например:</p>
+        <pre><code class="language-">http://127.0.0.1:8000/items/?item-query=foobaritems</code></pre>
+        <p>Но <code>item-query</code> - недопустимое имя переменной в Python.</p>
+        <p>Ближайший вариант - <code>item_query</code>.</p>
+        <p>Но нам все равно нужно именно <code>item-query</code>...</p>
+        <p>Тогда можно объявить <code>alias</code>, и этот псевдоним будет использован для поиска значения параметра:</p>
+<pre data-line="18" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/items/example12")
+async def read_items(q: Annotated[str | None, Query(alias="item-query")] = None):
+    results = {"items": [{"item_id": "Foo"}, {"item_id": "Bar"}]}
+    if q:
+        results.update({"q": q})
+    return results</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <input slot="inputs" name="url" value="http://127.0.0.1:8000/items/example12?item-query=query-parameter">
+            <input slot="inputs" name="method" value="GET">
+            <button slot="buttons" type="button">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h2>Маркировка параметров как устаревших</h2>
+        <p>Предположим, этот параметр вам больше не нравится.</p>
+        <p>Его нужно оставить на какое-то время, так как клиенты его используют, но вы хотите, чтобы в документации
+        он явно отображался как <abbr title="устаревший, не рекомендуется использовать">устаревший</abbr>.</p>
+        <p>Тогда передайте параметр <code>deprecated=True</code> в <code>Query</code>:</p>
+<pre data-line="28" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/items/example11")
+async def read_items(
+    q: Annotated[
+        str | None,
+        Query(
+            alias="item-query",
+            title="Query string",
+            description="Query string for the items to search in the database that have a good match",
+            min_length=3,
+            max_length=50,
+            pattern="^fixedquery$",
+            deprecated=True
+        )
+    ] = None):
+    results = {"items": [{"item_id": "Foo"}, {"item_id": "Bar"}]}
+    if q:
+        results.update({"q": q})
+    return results</code></pre>
+        <p><a target="_blank" href="http://127.0.0.1:8000/docs#/default/read_items_items_example11_get">http://127.0.0.1:8000/docs#/default/read_items_items_example11_get</a></p>
+
+        <h2>Исключить параметры из OpenAPI</h2>
+        <p>Чтобы исключить query-параметр из генерируемой OpenAPI-схемы (и, следовательно, из систем автоматической
+        документации), укажите у <code>Query</code> параметр <code>include_in_schema=False</code>:</p>
+<pre data-line="19" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/items/example13")
+async def read_items(
+    hidden_query: Annotated[str | None, Query(include_in_schema=False)] = None
+):
+    if hidden_query:
+        return {"hidden_query": hidden_query}
+    else:
+        return {"hidden_query": "Not found"}</code></pre>
+        <p><a target="_blank" href="http://127.0.0.1:8000/docs#/default/read_items_items_example13_get">http://127.0.0.1:8000/docs#/default/read_items_items_example13_get</a></p>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <input slot="inputs" name="url" value="http://127.0.0.1:8000/items/example13?hidden_query=kunteynir">
+            <input slot="inputs" name="method" value="GET">
+            <button slot="buttons" type="button">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h2>Кастомная валидация</h2>
+        <p>Бывают случаи, когда нужна <b>кастомная валидация</b>, которую нельзя выразить параметрами выше.</p>
+        <p>В таких случаях можно использовать <b>кастомную функцию-валидатор</b>, которая применяется после обычной
+        валидации (например, после проверки, что значение - это <code>str</code>).</p>
+        <p>Этого можно добиться, используя
+        <a target="_blank" href="https://docs.pydantic.dev/latest/concepts/validators/#field-after-validator"><code>AfterValidator</code> Pydantic</a>
+        внутри <code>Annotated</code>.</p>
+        <div class="admonition tip">
+            <h3>Совет</h3>
+            <p>В Pydantic также есть
+            <a target="_blank" href="https://docs.pydantic.dev/latest/concepts/validators/#field-before-validator"><code>BeforeValidator</code></a>
+            и другие.</p>
+        </div>
+        <p>Например, эта кастомная проверка убеждается, что ID элемента начинается с <code>isbn-</code> для номера
+        книги <abbr title="ISBN означает International Standard Book Number - Международный стандартный книжный номер">ISBN</abbr>
+        или с <code>imdb-</code> для ID URL фильма на
+        <abbr title="IMDB (Internet Movie Database) - веб-сайт с информацией о фильмах">IMDB</abbr>:</p>
+<pre data-line="6, 24-27, 31" class="line-numbers"><code class="language-python">import random
+from typing import Annotated
+
+from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import AfterValidator
+
+app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+data = {
+    "isbn-9781529046137": "The Hitchhiker's Guide to the Galaxy",
+    "imdb-tt0371724": "The Hitchhiker's Guide to the Galaxy",
+    "isbn-9781439512982": "Isaac Asimov: The Complete Stories, Vol. 2",
+}
+
+def check_valid_id(id: str):
+    if not id.startswith(("isbn-", "imdb-")):
+        raise ValueError('Invalid ID format, it must start with "isbn-" or "imdb-"')
+    return id
+
+
+@app.get("/items/example14")
+async def read_items(id: Annotated[str | None, AfterValidator(check_valid_id)] = None):
+    if id:
+        item = data.get(id)
+    else:
+        id, item = random.choice(list(data.items()))
+    return {"id": id, "name": item}</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <input slot="inputs" name="url" value="http://127.0.0.1:8000/items/example14?id=isbn-9781529046137">
+            <input slot="inputs" name="method" value="GET">
+            <button slot="buttons" type="button">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <div class="admonition tip">
+            <h3>Совет</h3>
+            <p>Если вам нужна валидация, требующая общения с каким-либо <b>внешним компонентом</b> - базой данных или
+            другими API - вместо этого используйте <b>зависимости FastAPI</b> (FastAPI dependencies), вы познакомитесь
+            с ними позже.</p>
+            <p>Эти кастомные валидаторы предназначены для проверок, которые можно выполнить, имея <b>только</b> те же
+            <b>данные, что пришли в запросе.</b></p>
+        </div>
+
+        <h2>Резюме</h2>
+        <p>Вы можете объявлять дополнительные проверки и метаданные для параметров.</p>
+        <p>Общие метаданные и настройки:</p>
+        <ul>
+            <li>
+                <p><code>alias</code></p>
+            </li>
+            <li>
+                <p><code>title</code></p>
+            </li>
+            <li>
+                <p><code>description</code></p>
+            </li>
+            <li>
+                <p><code>deprecated</code></p>
+            </li>
+        </ul>
+        <p>Проверки, специфичные для строк:</p>
+        <ul>
+            <li>
+                <p><code>min_length</code></p>
+            </li>
+            <li>
+                <p><code>max_length</code></p>
+            </li>
+            <li>
+                <p><code>pattern</code></p>
+            </li>
+        </ul>
+        <p>Кастомные проверки с использованием <code>AfterValidator</code>.</p>
+        <p>В этих примерах вы видели, как объявлять проверки для значений типа <code>str</code>.</p>
     </article>
 </body>
 </html>

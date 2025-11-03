@@ -21,14 +21,15 @@ function addCopyButton(elem) {
     button.innerHTML = '<svg style="vertical-align: middle" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 21H8V7h11m0-2H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2m-3-4H4a2 2 0 0 0-2 2v14h2V3h12V1Z"/></svg>';
     button.style.cssText = `
         position: absolute;
-        right: 0;
         top: 0;
+        right: 0;
         height: 2.5rem;
         width: 2.5rem;
         border: none;
         cursor: pointer;
         opacity: 0.7;
         border-radius: 0.5rem;
+        box-sizing: border-box;
     `;
 
     button.addEventListener('click', function () {
@@ -38,6 +39,10 @@ function addCopyButton(elem) {
     });
 
     elem.append(button);
+
+    elem.addEventListener('scroll', function() {
+        button.style.left = elem.offsetWidth + elem.scrollLeft - button.offsetWidth + 'px';
+    });
 }
 
 document.querySelectorAll('pre').forEach((elem) => {
@@ -54,7 +59,7 @@ customElements.define('request-response-container', class extends HTMLElement {
                     border: 0.1rem solid var(--code-background-color);
                     border-radius: 0.5rem;
                     padding: 0.5rem;
-                    gap: 0.5rem;
+                    gap: 0;
                 }
               
                 form {
@@ -64,10 +69,11 @@ customElements.define('request-response-container', class extends HTMLElement {
                     border-radius: 0.5rem;
                     box-sizing: border-box;
                     gap: 0.5rem;
-                    padding: 1rem 1rem 0.5rem 1rem;
-                    width: 50%;
+                    padding: 1rem 0.5rem 0.5rem 1rem;
+                    width: 100%;
                     align-items: start;
                     height: max-content;
+                    transition: width 1s;
                 }
                 
                 ::slotted(*) {
@@ -111,8 +117,10 @@ customElements.define('request-response-container', class extends HTMLElement {
                 }
                 
                 div.response {
-                    width: 50%;
+                    opacity: 0;
+                    width: 0;
                     box-sizing: border-box;
+                    transition: width 1s, opacity 1s;
                 }
                 
                 ::slotted(pre) {
@@ -139,6 +147,11 @@ customElements.define('request-response-container', class extends HTMLElement {
         let inputs = this.shadowRoot.querySelector('slot[name="inputs"]').assignedElements({flatten: true});
         let pre = this.shadowRoot.querySelector('slot[name="response"]').assignedElements({flatten: true}).at(0);
         button.addEventListener('click', function() {
+            this.assignedSlot.parentElement.style.width = '50%';
+            this.assignedSlot.parentElement.nextElementSibling.style.opacity = '1';
+            this.assignedSlot.parentElement.nextElementSibling.style.width = '50%';
+            this.assignedSlot.parentElement.getRootNode().host.style.gap = '0.5rem';
+
             pre.innerHTML = '';
             let url = inputs.at(0).value;
             let method = inputs.at(1).value;
@@ -153,12 +166,12 @@ customElements.define('request-response-container', class extends HTMLElement {
             }
             let data = Object.fromEntries(formData);
             let requestInit = {
-                    method: method,
-                    headers: {
-                        'Content-type': 'application/json'
-                    }
+                    method: method
             }
             if (method.toLowerCase() !== 'get') {
+                requestInit.headers = {
+                        'Content-type': 'application/json'
+                }
                 requestInit.body = JSON.stringify(data)
             }
             fetch(url, requestInit)

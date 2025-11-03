@@ -19,7 +19,6 @@ pre {
     position: relative;
     border-radius: 0.5rem;
     transition: box-shadow 0.5s;
-    white-space: pre-wrap !important;
 }
 
 pre span {
@@ -50,6 +49,11 @@ fieldset {
 a {
     color: var(--link-color);
     text-decoration: none;
+    transition: color 0.5s;
+}
+
+a:hover {
+    color: #fa0;
 }
 
 code:not(pre code) {
