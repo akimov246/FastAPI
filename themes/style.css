@@ -69,6 +69,7 @@ h2 {
 
 div.admonition {
     border-radius: 0.5rem;
+    margin: 0.5rem 0;
 }
 
 div.admonition.note {

@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Path-параметры и валидация числовых данных</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Path-параметры и валидация числовых данных</h1>
+        <p>Так же, как с помощью <code>Query</code> вы можете добавить валидацию и метаданные для query-параметров,
+        так и с помощью <code>Path</code> вы можете добавить такую же валидацию и метаданные для path-параметров.</p>
+
+        <h2>Импорт <code>Path</code></h2>
+        <p>Сначала импортируйте <code>Path</code> из <code>fastapi</code>, а также импортируйте <code>Annotated</code>:</p>
+<pre data-line="1, 3" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Path, Query
+from fastapi.middleware.cors import CORSMiddleware
+
+
+app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/items/{item_id}")
+async def read_items(
+    item_id: Annotated[int, Path(title="The ID of the item to get")],
+    q: Annotated[str | None, Query(alias="item-query")] = None
+ ):
+    results = {"item_id": item_id}
+    if q:
+        results.update({"q": q})
+    return results</code></pre>
+
+        <h2>Определите метаданные</h2>
+        <p>Вы можете указать все те же параметры, что и для <code>Query</code>.</p>
+        <p>Например, чтобы указать значение метаданных <code>title</code> для path-параметра <code>item_id</code>,
+        вы можете написать:</p>
+<pre data-line="20" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Path, Query
+from fastapi.middleware.cors import CORSMiddleware
+
+
+app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/items/{item_id}")
+async def read_items(
+    item_id: Annotated[int, Path(title="The ID of the item to get")],
+    q: Annotated[str | None, Query(alias="item-query")] = None
+ ):
+    results = {"item_id": item_id}
+    if q:
+        results.update({"q": q})
+    return results</code></pre>
+        <div class="admonition note">
+            <h3>Примечание</h3>
+            <p>Path-параметр всегда является обязательным, поскольку он должен быть частью пути. Даже если вы объявите
+            его как <code>None</code> или зададите значение по умолчанию, это ни на что не повлияет - параметр все
+            равно будет обязательным.</p>
+        </div>
+
+        <h2>Задайте нужный вам порядок параметров</h2>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Это не имеет большого значения, если вы используете <code>Annotated</code>.</p>
+        </div>
+        <p>Допустим, вы хотите объявить query-параметр <code>q</code> как обязательный параметр типа <code>str</code>.</p>
+        <p>И если вам больше ничего не нужно указывать для этого параметра, то нет необходимости использовать
+        <code>Query</code>.</p>
+        <p>Но вам по-прежнему нужно использовать <code>Path</code> для path-параметра <code>item_id</code>. И если
+        по какой-либо причине вы не хотите использовать <code>Annotated</code>, то могут возникнуть небольшие сложности.</p>
+        <p>Если вы поместите параметр со значением по умолчанию перед другим параметром, у которого нет значения
+        по умолчанию, то Python укажет на ошибку.</p>
+        <p>Но вы можете изменить порядок параметров, чтобы параметр без значения по умолчанию (query-параметр <code>q</code>)
+        шел первым.</p>
+        <p>Это не имеет значения для <b>FastAPI</b>. Он распознает параметры по их названиям, типам и значениям по
+        умолчанию (<code>Query</code>, <code>Path</code> и т.д.), ему не важен их порядок.</p>
+        <p>Поэтому вы можете определить функцию так:</p>
+<pre data-line="17" class="line-numbers"><code class="language-python">from fastapi import FastAPI, Path
+from fastapi.middleware.cors import CORSMiddleware
+
+
+app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/items/{item_id}")
+async def read_items(q: str, item_id: int = Path(title="The ID of the item to get")):
+    results = {"item_id": item_id}
+    if q:
+        results.update({"q": q})
+    return results</code></pre>
+        <p>Но имейте в виду, что если вы используете <code>Annotated</code>, вы не столкнетесь с этой проблемой,
+        так как вы не используете значения по умолчанию параметров для функции <code>Query()</code> или <code>Path()</code>.</p>
+<pre data-line="19" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Path
+from fastapi.middleware.cors import CORSMiddleware
+
+
+app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/items/{item_id}")
+async def read_items(q: str, item_id: Annotated[int, Path(title="The ID of the item to get")]):
+    results = {"item_id": item_id}
+    if q:
+        results.update({"q": q})
+    return results</code></pre>
+
+        <h2>Задайте нужный вам порядок параметров, полезные приемы</h2>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Это не имеет большого значения, если вы используете <code>Annotated</code>.</p>
+        </div>
+        <p>Здесь описан <b>небольшой прием</b>, который может оказаться удобным, хотя часто он вам не понадобится.</p>
+        <p>Если вы хотите:</p>
+        <ul>
+            <li>
+                <p>Объявить query-параметр <code>q</code> без <code>Query</code> и без значения по умолчанию.</p>
+            </li>
+            <li>
+                <p>Объявить path-параметр <code>item_id</code> с помощью <code>Path</code>.</p>
+            </li>
+            <li>
+                <p>Указать их в другом порядке.</p>
+            </li>
+            <li>
+                <p>Не использовать <code>Annotated</code>.</p>
+            </li>
+        </ul>
+        <p>...то вы можете использовать специальную возможность синтаксиса Python.</p>
+        <p>Передайте <code>*</code> в качестве первого параметра функции.</p>
+        <p>Python не будет ничего делать с <code>*</code>, но он будет знать, что все следующие параметры являются
+        именованными аргументами (параметр ключ-значение), также известными как <code>kwargs</code>, даже если
+        у них нет значений по умолчанию.</p>
+        <pre data-line="17" class="line-numbers"><code class="language-python">from fastapi import FastAPI, Path
+from fastapi.middleware.cors import CORSMiddleware
+
+
+app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/items/{item_id}")
+async def read_items(*, item_id: int = Path(title="The ID of the item to get"), q: str):
+    results = {"item_id": item_id}
+    if q:
+        results.update({"q": q})
+    return results</code></pre>
+
+        <h3>Лучше с <code>Annotated</code></h3>
+        <p>Имейте в виду, что если вы используете <code>Annotated</code>, то, поскольку вы не используете значений
+        по умолчанию для параметров функции, у вас не возникнет подобной проблемы и вам, вероятно, не придется
+        использовать <code>*</code>.</p>
+<pre data-line="19" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Path
+from fastapi.middleware.cors import CORSMiddleware
+
+
+app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/items/{item_id}")
+async def read_items(item_id: Annotated[int, Path(title="The ID of the item to get")], q: str):
+    results = {"item_id": item_id}
+    if q:
+        results.update({"q": q})
+    return results</code></pre>
+
+        <h2>Валидация числовых данных: больше или равно</h2>
+        <p>С помощью <code>Query</code> и <code>Path</code> (и других классов, которые мы разберем позже) вы можете
+        добавлять ограничения для числовых данных.</p>
+        <p>В этом примере при указании <code>ge=1</code>, параметр <code>item_id</code> должен быть целым числом
+        «<b>g</b>reater than or <b>e</b>qual» - больше или равно <code>1</code>.</p>
+<pre data-line="19" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Path
+from fastapi.middleware.cors import CORSMiddleware
+
+
+app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/items/ge/{item_id}")
+async def read_items(item_id: Annotated[int, Path(title="The ID of the item to get", ge=1)], q: str):
+    results = {"item_id": item_id}
+    if q:
+        results.update({"q": q})
+    return results</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <input slot="inputs" type="text" name="url" value="http://127.0.0.1:8000/items/ge/1?q=qwe">
+            <input slot="inputs" type="text" name="method" value="GET">
+            <button slot="buttons">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h2>Валидация числовых данных: больше и меньше или равно</h2>
+        <p>То же самое применимо к:</p>
+        <ul>
+            <li>
+                <p><code>gt</code>: больше (<b>g</b>reater <b>t</b>han).</p>
+            </li>
+            <li>
+                <p><code>le</code>: меньше или равно (<b>l</b>ess than or <b>e</b>qual).</p>
+            </li>
+        </ul>
+<pre data-line="19" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Path
+from fastapi.middleware.cors import CORSMiddleware
+
+
+app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/items/gtle/{item_id}")
+async def read_items(item_id: Annotated[int, Path(title="The ID of the item to get", gt=0, le=1000)], q: str):
+    results = {"item_id": item_id}
+    if q:
+        results.update({"q": q})
+    return results</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <input slot="inputs" type="text" name="url" value="http://127.0.0.1:8000/items/gtle/1?q=qwe">
+            <input slot="inputs" type="text" name="method" value="GET">
+            <button slot="buttons">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h2>Валидация числовых данных: числа с плавающей точкой, больше или меньше</h2>
+        <p>Валидация также применима к значениям типа <code>float</code>.</p>
+        <p>В этом случае становится важной возможностью добавить ограничение <code>gt</code>, вместо <code>ge</code>,
+        поскольку в таком случае вы можете, например, создать ограничение, чтобы значение было больше <code>0</code>,
+        даже если оно меньше <code>1</code>.</p>
+<pre data-line="22" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Path, Query
+from fastapi.middleware.cors import CORSMiddleware
+
+
+app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/items/float/{item_id}")
+async def read_items(
+    item_id: Annotated[int, Path(title="The ID of the item to get", gt=0, le=1000)],
+    q: str,
+    size: Annotated[float, Query(gt=0, lt=10.5)]
+):
+    results = {"item_id": item_id}
+    if q:
+        results.update({"q": q})
+    if size:
+        results.update({"size": size})
+    return results</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <input slot="inputs" type="text" name="url" value="http://127.0.0.1:8000/items/float/1?q=qwe&size=5.5">
+            <input slot="inputs" type="text" name="method" value="GET">
+            <button slot="buttons">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h2>Резюме</h2>
+        <p>С помощью <code>Query</code>, <code>Path</code> (и других классов, которые мы пока не затронули) вы можете
+        добавлять метаданные и строковую валидацию тем же способом, как и в главе
+        <a target="_blank" href="../5.%20Query-параметры%20и%20валидация%20строк/index.html">Query-параметры и валидация строк</a>.</p>
+        <p>А также вы можете добавить валидацию числовых данных:</p>
+        <ul>
+            <li>
+                <p><code>gt</code>: больше (<b>g</b>reater <b>t</b>han).</p>
+            </li>
+            <li>
+                <p><code>ge</code>: больше или равно (<b>g</b>reater than or <b>e</b>qual).</p>
+            </li>
+            <li>
+                <p><code>lt</code>: меньше (<b>l</b>ess <b>t</b>han).</p>
+            </li>
+            <li>
+                <p><code>le</code>: меньше или равно (<b>l</b>ess than or <b>e</b>qual).</p>
+            </li>
+        </ul>
+        <div class="admonition info">
+            <h3>Информация</h3>
+            <p><code>Query</code>, <code>Path</code> и другие классы, которые вы разберете позже, являются наследниками
+            общего класса <code>Param</code>.</p>
+            <p>Все они используют те же параметры для дополнительной валидации и метаданных, которые вы видели ранее.</p>
+        </div>
+        <div class="admonition note">
+            <h3>Технические детали</h3>
+            <p><code>Query</code>, <code>Path</code> и другие «классы», которые вы импортируете из <code>fastapi</code>,
+            на самом деле являются функциями, которые при вызове возвращают экземпляры одноименных классов.</p>
+            <p>Объект <code>Query</code>, которые вы импортируете, является функцией. И при вызове она возвращает
+            экземпляр одноименного класса <code>Query</code>.</p>
+            <p>Использование функций (вместо использования классов напрямую) нужно для того, чтобы ваш редактор
+            не подсвечивал ошибки, связанные с их типами.</p>
+            <p>Таким образом вы можете использовать привычный вам редактор и инструменты разработки, не добавляя
+            дополнительных конфигураций для игнорирования подобных ошибок.</p>
+        </div>
+    </article>
+</body>
+</html>
