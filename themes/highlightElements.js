@@ -49,6 +49,15 @@ document.querySelectorAll('pre').forEach((elem) => {
     addCopyButton(elem);
 });
 
+document.addEventListener('keydown', function(event) {
+    if (event.code === 'Enter') {
+        let form  = document.activeElement.assignedSlot?.closest('form');
+        if (form) {
+            form.querySelector('slot[name="buttons"]').assignedElements({flatten: true}).at(0).click();
+        }
+    }
+});
+
 customElements.define('request-response-container', class extends HTMLElement {
     connectedCallback() {
         this.attachShadow({mode: 'open'})
@@ -142,10 +151,10 @@ customElements.define('request-response-container', class extends HTMLElement {
                 <slot name="response"></slot>
             </div>
         `
-        
         let button = this.shadowRoot.querySelector('slot[name="buttons"]').assignedElements({flatten: true}).at(0);
         let inputs = this.shadowRoot.querySelector('slot[name="inputs"]').assignedElements({flatten: true});
         let pre = this.shadowRoot.querySelector('slot[name="response"]').assignedElements({flatten: true}).at(0);
+        
         button.addEventListener('click', function() {
             this.assignedSlot.parentElement.style.width = '50%';
             this.assignedSlot.parentElement.nextElementSibling.style.opacity = '1';

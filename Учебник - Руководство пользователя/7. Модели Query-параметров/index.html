@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Модели Query-параметров</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Модели Query-параметров</h1>
+        <p>Если у вас есть группа связанных <b>query-параметров</b>, то вы можете объединить их в одну
+        <b>Pydantic-модель</b>.</p>
+        <p>Это позволит вам <b>переиспользовать модель</b> в <b>разных местах</b>, устанавливать валидаторы и метаданные,
+        в том числе для сразу всех параметров, в одном месте.</p>
+
+        <h2>Pydantic-модель для Query-параметров</h2>
+        <p>Объявите нужные <b>query-параметры</b> в <b>pydantic-модели</b>, а после аннотируйте параметр как
+        <code>Query</code>:</p>
+<pre data-line="17-21, 25" class="line-numbers"><code class="language-python">from typing import Annotated, Literal
+
+from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class FilterParams(BaseModel):
+    limit: Annotated[int, Field(gt=0, le=100)] = 100
+    offset: Annotated[int, Field(ge=0)] = 0
+    order_by: Literal["created_at", "updated_at"] = "created_at"
+    tags: list[str] = []
+
+
+@app.get("/items")
+async def read_items(filter_query: Annotated[FilterParams, Query()]):
+    return filter_query</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <input slot="inputs" type="url" value="http://127.0.0.1:8000/items">
+            <input slot="inputs" type="text" value="GET">
+            <button slot="buttons">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p><b>FastAPI извлечет</b> данные соответствующие <b>каждому полю модели</b> из <b>query-параметров</b> запроса
+        и выдаст вам объявленную Pydantic-модель заполненную ими.</p>
+
+        <h2>Проверьте сгенерированную документацию</h2>
+        <p>Вы можете посмотреть query-параметры в графическом интерфейсе сгенерированной документации:</p>
+        <p><a target="_blank" href="http://127.0.0.1:8000/docs">http://127.0.0.1:8000/docs</a></p>
+        <p><a target="_blank" href="http://127.0.0.1:8000/redoc">http://127.0.0.1:8000/redoc</a></p>
+
+        <h2>Запретить дополнительные query-параметры</h2>
+        <p>В некоторых случаях (не особо часто встречающихся) вам может понадобиться <b>ограничить</b>
+        query-параметры, которые вы хотите получить.</p>
+        <p>Вы можете сконфигурировать pydantic-модель так, чтобы запретить (<code>forbid</code>) все дополнительные
+        (<code>extra</code>) поля.</p>
+<pre data-line="18" class="line-numbers"><code class="language-python">from typing import Annotated, Literal
+
+from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class FilterParams(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    limit: Annotated[int, Field(gt=0, le=100)] = 100
+    offset: Annotated[int, Field(ge=0)] = 0
+    order_by: Literal["created_at", "updated_at"] = "created_at"
+    tags: list[str] = []
+
+
+@app.get("/items")
+async def read_items(filter_query: Annotated[FilterParams, Query()]):
+    return filter_query</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <input slot="inputs" type="url" value="http://127.0.0.1:8000/items?limit=10&tool=plumbus">
+            <input slot="inputs" type="text" value="GET">
+            <button slot="buttons">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Если клиент попробует отправить <b>дополнительные</b> данные в <b>query-параметрах</b>, то в ответ он
+        получит <b>ошибку</b>.</p>
+
+        <h2>Заключение</h2>
+        <p>Вы можете использовать <b>pydantic-модели</b> для объявления <b>query-параметров</b> в <b>FastAPI</b>.</p>
+        <div class="admonition tip">
+            <h3>Совет</h3>
+            <p>Спойлер: вы также можете использовать pydantic-модели, чтобы объявлять cookies и HTTP-заголовки,
+            но об этом вы прочитаете позже.</p>
+        </div>
+    </article>
+</body>
+</html>
