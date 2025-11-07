@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Body - Множество параметров</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Body - Множество параметров</h1>
+        <p>Теперь, когда мы увидели, как использовать <code>Path</code> и <code>Query</code> параметры, давайте
+        рассмотрим более продвинутые примеры объявления тела запроса.</p>
+
+        <h2>Объединение <code>Path</code>, <code>Query</code> и параметров тела запроса</h2>
+        <p>Во-первых, конечно, вы можете объединять параметры <code>Path</code>, <code>Query</code> и объявления
+        тела запроса в своих функциях обработки, <b>FastAPI</b> автоматически определит, что с ними нужно делать.</p>
+        <p>Вы также можете объявить параметры тела запроса как необязательные, установив значение по умолчанию,
+        равное <code>None</code>:</p>
+<pre data-line="26-28" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Path
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class Item(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+
+
+@app.put("/items/example1/{item_id}")
+async def update_item(
+        item_id: Annotated[int, Path(title="The ID of the item to get", ge=0, le=1000)],
+        q: str | None = None,
+        item: Item | None = None
+):
+    results = {"item_id": item_id}
+    if q:
+        results.update({"q": q})
+    if item:
+        results.update({"item": item})
+    return results</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">name:</label>
+            <label slot="labels">description:</label>
+            <label slot="labels">price:</label>
+            <label slot="labels">tax:</label>
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/example1/0?q=query-parameter">
+            <input slot="inputs" type="text" name="method" value="PUT">
+            <input slot="inputs" type="text" name="name" value="Foo">
+            <input slot="inputs" type="text" name="description" value="The pretender">
+            <input slot="inputs" type="text" name="price" value="42.0">
+            <input slot="inputs" type="text" name="tax" value="3.2">
+            <button slot="buttons">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <div class="admonition note">
+            <h3>Заметка</h3>
+            <p>Заметьте, что в данном случае параметр <code>item</code>, который будет взят из тела запроса, необязателен.
+            Так как было установлено значение <code>None</code> по умолчанию.</p>
+        </div>
+
+        <h2>Несколько параметров тела запроса</h2>
+        <p>В предыдущем примере, <i>операции пути</i> ожидали тело запроса в формате JSON, с параметрами,
+        соответствующими атрибутам <code>Item</code>, например:</p>
+<pre><code class="language-json">{
+    "name": "Foo",
+    "description": "The pretender",
+    "price": 42.0,
+    "tax": 3.2
+}</code></pre>
+        <p>Но вы также можете объявить множество параметров тела запроса, например <code>item</code> и <code>user</code>:</p>
+<pre data-line="28" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class Item(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+
+
+class User(BaseModel):
+    username: str
+    full_name: str | None = None
+
+
+@app.put("/items/example2/{item_id}")
+async def update_item(item_id: int, item: Item, user: User):
+    results = {"item_id": item_id, "item": item, "user": user}
+    return results</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">item:</label>
+            <label slot="labels" style="padding-left: 1ch">name:</label>
+            <label slot="labels" style="padding-left: 1ch">description:</label>
+            <label slot="labels" style="padding-left: 1ch">price:</label>
+            <label slot="labels" style="padding-left: 1ch">tax:</label>
+            <label slot="labels">user:</label>
+            <label slot="labels" style="padding-left: 1ch">username:</label>
+            <label slot="labels" style="padding-left: 1ch">full_name:</label>
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/example2/0">
+            <input slot="inputs" type="text" name="method" value="PUT">
+            <input slot="inputs" style="visibility: hidden">
+            <input slot="inputs" data-body="item" type="text" name="name" value="Foo">
+            <input slot="inputs" data-body="item" type="text" name="description" value="The pretender">
+            <input slot="inputs" data-body="item" type="text" name="price" value="42.0">
+            <input slot="inputs" data-body="item" type="text" name="tax" value="3.2">
+            <input slot="inputs" type="text" style="visibility: hidden">
+            <input slot="inputs" data-body="user" type="text" name="username" value="dave">
+            <input slot="inputs" data-body="user" type="text" name="full_name" value="Dave Grohl">
+            <button slot="buttons">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>В этом случае <b>FastAPI</b> заметит, что в функции есть более одного параметра тела (два параметра,
+        которые являются Pydantic-моделями).</p>
+        <p>Таким образом, имена параметров будут использоваться в качестве ключей (имен полей) в теле запроса,
+        и будет ожидаться запрос следующего формата:</p>
+<pre><code class="language-json">{
+    "item": {
+        "name": "Foo",
+        "description": "The pretender",
+        "price": 42.0,
+        "tax": 3.2
+    },
+    "user": {
+        "username": "dave"
+        "full_name": "Dave Grohl"
+    }
+}</code></pre>
+        <div class="admonition note">
+            <h3>Внимание</h3>
+            <p>Обратите внимание, что хотя параметр <code>item</code> был объявлен таким же способом, как и раньше,
+            теперь предполагается, что он находится внутри тела с ключом <code>item</code>.</p>
+        </div>
+        <p><b>FastAPI</b> сделает автоматическое преобразование из запроса, так что параметр <code>item</code>
+        получит свое конкретное содержимое, и то же самое происходит с пользователем <code>user</code>.</p>
+        <p>Произойдет проверка составных данных, и создание документации в схеме OpenAPI и автоматических документах.</p>
+
+        <h2>Отдельные значения в теле запроса</h2>
+        <p>Точно так же, как <code>Query</code> и <code>Path</code> используются для определения дополнительных данных
+        для query и path параметров, <b>FastAPI</b> предоставляет аналогичный инструмент - <code>Body</code>.</p>
+        <p>Например, расширяя предыдущую модель, вы можете решить, что вам нужен еще один ключ <code>importance</code>
+        в том же теле запроса, помимо параметров <code>item</code> и <code>user</code>.</p>
+        <p>Если вы объявите его без указания, какой именно объект (Path, Query, Body и т.п.) ожидает, то, поскольку
+        это является простым типом данных, <b>FastAPI</b> будет считать, что это query-параметр.</p>
+        <p>Но вы можете указать <b>FastAPI</b> обрабатывать его, как еще один ключ тела запроса, используя <code>Body</code>:</p>
+<pre data-line="28" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Body
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class Item(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+
+
+class User(BaseModel):
+    username: str
+    full_name: str | None = None
+
+
+@app.put("/items/example3/{item_id}")
+async def update_item(item_id: int, item: Item, user: User, importance: Annotated[int, Body()]):
+    results = {"item_id": item_id, "item": item, "user": user, "importance": importance}
+    return results</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">item:</label>
+            <label slot="labels" style="padding-left: 1ch">name:</label>
+            <label slot="labels" style="padding-left: 1ch">description:</label>
+            <label slot="labels" style="padding-left: 1ch">price:</label>
+            <label slot="labels" style="padding-left: 1ch">tax:</label>
+            <label slot="labels">user:</label>
+            <label slot="labels" style="padding-left: 1ch">username:</label>
+            <label slot="labels" style="padding-left: 1ch">full_name:</label>
+            <label slot="labels">importance:</label>
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/example3/0">
+            <input slot="inputs" type="text" name="method" value="PUT">
+            <input slot="inputs" style="visibility: hidden">
+            <input slot="inputs" data-body="item" type="text" name="name" value="Foo">
+            <input slot="inputs" data-body="item" type="text" name="description" value="The pretender">
+            <input slot="inputs" data-body="item" type="text" name="price" value="42.0">
+            <input slot="inputs" data-body="item" type="text" name="tax" value="3.2">
+            <input slot="inputs" type="text" style="visibility: hidden">
+            <input slot="inputs" data-body="user" type="text" name="username" value="dave">
+            <input slot="inputs" data-body="user" type="text" name="full_name" value="Dave Grohl">
+            <input slot="inputs" type="text" name="importance" value="5">
+            <button slot="buttons">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>В этом случае, <b>FastAPI</b> будет ожидать тело запроса в формате:</p>
+<pre><code class="language-json">{
+    "item": {
+        "name": "Foo",
+        "description": "The pretender",
+        "price": 42,
+        "tax": 3.2
+    },
+    "user": {
+        "username": "dave",
+        "full_name": "Dave Grohl"
+    },
+    "importance": 5
+}</code></pre>
+        <p>И все будет работать так же - преобразование типов данных, валидация, документирование и т.д.</p>
+
+        <h2>Множество body и query параметров</h2>
+        <p>Конечно, вы также можете объявлять query-параметры в любое время, дополнительно к любым body-параметрам.</p>
+        <p>Поскольку по умолчанию, отдельные значения интерпретируются как query-параметры, вам не нужно явно
+        добавлять <code>Query</code>, вы можете просто сделать так:</p>
+        <pre><code class="language-python">q: str | None = None</code></pre>
+        <p>Например:</p>
+<pre data-line="35" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Body
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class Item(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+
+
+class User(BaseModel):
+    username: str
+    full_name: str | None = None
+
+
+@app.put("/items/example4/{item_id}")
+async def update_item(
+    item_id: int,
+    item: Item,
+    user: User,
+    importance: Annotated[int, Body(gt=0)],
+    q: str | None = None
+):
+    results = {"item_id": item_id, "item": item, "user": user, "importance": importance}
+    if q:
+        results.update({"q": q})
+    return results</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">item:</label>
+            <label slot="labels" style="padding-left: 1ch">name:</label>
+            <label slot="labels" style="padding-left: 1ch">description:</label>
+            <label slot="labels" style="padding-left: 1ch">price:</label>
+            <label slot="labels" style="padding-left: 1ch">tax:</label>
+            <label slot="labels">user:</label>
+            <label slot="labels" style="padding-left: 1ch">username:</label>
+            <label slot="labels" style="padding-left: 1ch">full_name:</label>
+            <label slot="labels">importance:</label>
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/example4/0?q=query-parameter">
+            <input slot="inputs" type="text" name="method" value="PUT">
+            <input slot="inputs" style="visibility: hidden">
+            <input slot="inputs" data-body="item" type="text" name="name" value="Foo">
+            <input slot="inputs" data-body="item" type="text" name="description" value="The pretender">
+            <input slot="inputs" data-body="item" type="text" name="price" value="42.0">
+            <input slot="inputs" data-body="item" type="text" name="tax" value="3.2">
+            <input slot="inputs" type="text" style="visibility: hidden">
+            <input slot="inputs" data-body="user" type="text" name="username" value="dave">
+            <input slot="inputs" data-body="user" type="text" name="full_name" value="Dave Grohl">
+            <input slot="inputs" type="text" name="importance" value="5">
+            <button slot="buttons">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <div class="admonition info">
+            <h3>Информация</h3>
+            <p><code>Body</code> также имеет все те же дополнительные параметры валидации и метаданных, как <code>Query</code>,
+            <code>Path</code> и других, которые вы увидите позже.</p>
+        </div>
+
+        <h2>Вложить один body-параметр</h2>
+        <p>Предположим, у вас есть только один body-параметр <code>item</code> из Pydantic-модели <code>Item</code>.</p>
+        <p>По умолчанию, <b>FastAPI</b> ожидает получить тело запроса напрямую.</p>
+        <p>Но если вы хотите, чтобы он ожидал JSON с ключом <code>item</code> с содержимым модели внутри, также как
+        это происходит при объявлении дополнительных body-параметров, вы можете использовать специальный параметр
+        <code>embed</code> у типа <code>Body</code>:</p>
+        <pre><code class="language-python">item: Annotated[Item, Body(embed=True)]</code></pre>
+        <p>Так же, как в этом примере:</p>
+<pre data-line="25" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Body
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class Item(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+
+
+@app.put("/items/example5/{item_id}")
+async def update_item(item_id: int, item: Annotated[Item, Body(embed=True)]):
+    results = {"item_id": item_id, "item": item}
+    return results</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">item:</label>
+            <label slot="labels" style="padding-left: 1ch">name:</label>
+            <label slot="labels" style="padding-left: 1ch">description:</label>
+            <label slot="labels" style="padding-left: 1ch">price:</label>
+            <label slot="labels" style="padding-left: 1ch">tax:</label>
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/example5/0">
+            <input slot="inputs" type="text" name="method" value="PUT">
+            <input slot="inputs" style="visibility: hidden">
+            <input slot="inputs" data-body="item" type="text" name="name" value="Foo">
+            <input slot="inputs" data-body="item" type="text" name="description" value="The pretender">
+            <input slot="inputs" data-body="item" type="text" name="price" value="42.0">
+            <input slot="inputs" data-body="item" type="text" name="tax" value="3.2">
+            <button slot="buttons">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>В этом случае <b>FastAPI</b> будет ожидать тело запроса в формате:</p>
+<pre><code class="language-json">{
+    "item": {
+        "name": "Foo",
+        "description": "The pretender",
+        "price": 42.0,
+        "tax": 3.2
+    }
+}</code></pre>
+        <p>Вместо этого:</p>
+<pre><code class="language-json">{
+    "name": "Foo",
+    "description": "The pretender",
+    "price": 42.0,
+    "tax": 3.2
+}</code></pre>
+
+        <h2>Резюме</h2>
+        <p>Вы можете добавлять несколько body-параметров вашей <i>функции-обработчика пути</i>, несмотря даже на то,
+        что запрос может содержать только одно тело.</p>
+        <p>Но <b>FastAPI</b> справится с этим, предоставит правильные данные в вашей функции, а также сделает валидацию
+        и документацию правильной схемы <i>операции пути</i>.</p>
+        <p>Вы также можете объявить отдельные значения для получения в рамках тела запроса.</p>
+        <p>И вы можете настроить <b>FastAPI</b> таким образом, чтобы включить тело запроса в ключ, даже если объявлен
+        только один параметр.</p>
+    </article>
+</body>
+</html>

@@ -164,20 +164,26 @@ customElements.define('request-response-container', class extends HTMLElement {
             pre.innerHTML = '';
             let url = inputs.at(0).value;
             let method = inputs.at(1).value;
-            let formData = new FormData();
+            let data = {};
             for (let input of inputs) {
                 if (input.name.toLowerCase() === 'url' || input.name.toLowerCase() === 'method') {
                     continue;
                 }
                 if (input.value) {
-                    formData.append(input.name, input.value);
+                    if (input.dataset.body) {
+                        if (!data[input.dataset.body]) {
+                            data[input.dataset.body] = {};
+                        }
+                        data[input.dataset.body][input.name] = input.value;
+                    } else {
+                        data[input.name] = input.value;
+                    }
                 }
             }
-            let data = Object.fromEntries(formData);
             let requestInit = {
                     method: method
             }
-            if (method.toLowerCase() !== 'get') {
+            if (method.toLowerCase() !== 'get' && Object.keys(data).length) {
                 requestInit.headers = {
                         'Content-type': 'application/json'
                 }
@@ -188,7 +194,7 @@ customElements.define('request-response-container', class extends HTMLElement {
                 return response.json();
             })
             .then(json => {
-                pre.innerHTML = JSON.stringify(json, undefined, 2);
+                pre.innerHTML = JSON.stringify(json, undefined, 4);
                 Prism.highlightElement(pre);
                 addCopyButton(pre);
             })
