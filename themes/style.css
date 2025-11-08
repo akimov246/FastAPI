@@ -84,6 +84,10 @@ div.admonition.tip {
     border: 0.1rem solid #00bfa5;
 }
 
+div.admonition.warning {
+    border: 0.1rem solid #ff9100;
+}
+
 div.admonition p {
     padding-left: 1rem;
 }
@@ -123,6 +127,14 @@ div.admonition.tip h3:first-of-type {
 
 div.admonition.tip h3:first-of-type::before {
     content: '🔥';
+}
+
+div.admonition.warning h3:first-of-type {
+    background: #ff91001a;
+}
+
+div.admonition.warning h3:first-of-type::before {
+    content: '⚠️';
 }
 
 abbr {

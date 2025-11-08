@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Body - Поля</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Body - Поля</h1>
+        <p>Таким же способом, как вы объявляете дополнительную валидацию и метаданные в параметрах <i>функции обработки
+        пути</i> с помощью <code>Query</code>, <code>Path</code> и <code>Body</code>, вы можете объявлять валидацию
+        и метаданные внутри Pydantic моделей, используя функцию <code>Field</code> из Pydantic.</p>
+
+        <h2>Импорт <code>Field</code></h2>
+        <p>Сначала вы должны импортировать его:</p>
+<pre data-line="5" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Body
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class Item(BaseModel):
+    name: str
+    description: Annotated[str | None, Field(title="The description of the item", max_length=300)] = None
+    price: Annotated[float, Field(gt=0, description="The price must be greater than zero")]
+    tax: float | None = None
+
+
+@app.put("/items/{item_id}")
+async def update_item(item_id: int, item: Annotated[Item, Body(embed=True)]):
+    results = {"item_id": item_id, "item": item}
+    return results</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">item:</label>
+            <label slot="labels" style="padding-left: 1ch">name:</label>
+            <label slot="labels" style="padding-left: 1ch">description:</label>
+            <label slot="labels" style="padding-left: 1ch">price:</label>
+            <label slot="labels" style="padding-left: 1ch">tax:</label>
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/0">
+            <input slot="inputs" type="text" name="method" value="PUT">
+            <input slot="inputs" style="visibility: hidden">
+            <input slot="inputs" data-body="item" type="text" name="name" value="Foo">
+            <input slot="inputs" data-body="item" type="text" name="description" value="The pretender">
+            <input slot="inputs" data-body="item" type="text" name="price" value="42.0">
+            <input slot="inputs" data-body="item" type="text" name="tax" value="3.2">
+            <button slot="buttons">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <div class="admonition warning">
+            <h3>Внимание</h3>
+            <p>Обратите внимание, что функция <code>Field</code> импортируется непосредственно из <code>pydantic</code>,
+            а не из <code>fastapi</code>, как все остальные функции (<code>Query</code>, <code>Path</code>,
+            <code>Body</code> и т.д.).</p>
+        </div>
+
+        <h2>Объявление атрибутов модели</h2>
+        <p>Вы можете использовать функцию <code>Field</code> с атрибутами модели:</p>
+<pre data-line="19-20" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Body
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class Item(BaseModel):
+    name: str
+    description: Annotated[str | None, Field(title="The description of the item", max_length=300)] = None
+    price: Annotated[float, Field(gt=0, description="The price must be greater than zero")]
+    tax: float | None = None
+
+
+@app.put("/items/{item_id}")
+async def update_item(item_id: int, item: Annotated[Item, Body(embed=True)]):
+    results = {"item_id": item_id, "item": item}
+    return results</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">item:</label>
+            <label slot="labels" style="padding-left: 1ch">name:</label>
+            <label slot="labels" style="padding-left: 1ch">description:</label>
+            <label slot="labels" style="padding-left: 1ch">price:</label>
+            <label slot="labels" style="padding-left: 1ch">tax:</label>
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/0">
+            <input slot="inputs" type="text" name="method" value="PUT">
+            <input slot="inputs" style="visibility: hidden">
+            <input slot="inputs" data-body="item" type="text" name="name" value="Foo">
+            <input slot="inputs" data-body="item" type="text" name="description" value="The pretender">
+            <input slot="inputs" data-body="item" type="text" name="price" value="42.0">
+            <input slot="inputs" data-body="item" type="text" name="tax" value="3.2">
+            <button slot="buttons">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Функция <code>Field</code> работает так же, как <code>Query</code>, <code>Path</code> и <code>Body</code>,
+        у нее такие же параметры и т.д.</p>
+        <div class="admonition note">
+            <h3>Технические детали</h3>
+            <p>На самом деле, <code>Query</code>, <code>Path</code> и другие функции, которые вы увидите в дальнейшем,
+            создают объекты подклассов общего класса <code>Param</code>, который сам по себе является подклассом
+            <code>FieldInfo</code> из Pydantic.</p>
+            <p>B <code>Field</code> (из Pydantic) также возвращает экземпляр <code>FieldInfo</code>.</p>
+            <p><code>Body</code> также напрямую возвращает объекты подкласса <code>FieldInfo</code>. И есть и другие,
+            с которыми вы познакомитесь позже, которые являются подклассами класса <code>Body</code>.</p>
+            <p>Помните, что когда вы импортируете <code>Query</code>, <code>Path</code> и другое из <code>fastapi</code>,
+            это фактически функции, которые возвращают специальные классы.</p>
+        </div>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Обратите внимание, что каждый атрибут модели с типом, значением по умолчанию и <code>Field</code>
+            имеет ту же структуру, что и параметр <i>функции обработки пути</i> с <code>Field</code> вместо
+            <code>Path</code>, <code>Query</code> и <code>Body</code>.</p>
+        </div>
+
+        <h2>Добавление дополнительной информации</h2>
+        <p>Вы можете объявлять дополнительную информацию в <code>Field</code>, <code>Query</code>, <code>Body</code>
+        и т.п. Она будет включена в сгенерированную JSON схему.</p>
+        <p>Вы узнаете больше о добавлении дополнительной информации позже в документации, когда будете изучать,
+        как задавать примеры.</p>
+        <div class="admonition warning">
+            <h3>Внимание</h3>
+            <p>Дополнительные ключи, переданные в функцию <code>Field</code>, также будут присутствовать в сгенерированной
+            OpenAPI схеме вашего приложения. Поскольку эти ключи не являются обязательной частью спецификации OpenAPI,
+            некоторые инструменты OpenAPI, например,
+            <a target="_blank" href="https://validator.swagger.io/">валидатор OpenAPI</a>, могут не работать с вашей
+            сгенерированной схемой.</p>
+        </div>
+
+        <h2>Резюме</h2>
+        <p>Вы можете использовать функцию <code>Field</code> из Pydantic, чтобы задавать дополнительную валидацию
+        и метаданные для атрибутов модели.</p>
+        <p>Вы также можете использовать дополнительные ключевые аргументы, чтобы добавить метаданные JSON схемы.</p>
+    </article>
+</body>
+</html>
