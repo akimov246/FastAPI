@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Body - Вложенные модели</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Body - Вложенные модели</h1>
+        <p>С помощью <b>FastAPI</b> вы можете определять, валидировать, документировать и использовать модели
+        произвольной глубины вложенности (благодаря Pydantic).</p>
+
+        <h2>Поля-списки</h2>
+        <p>Вы можете определить атрибут как подтип. Например, Python-тип <code>list</code>:</p>
+<pre data-line="20" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class ItemList(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+    tags: list = []
+
+
+@app.put("/items/list/{item_id}")
+async def update_item(item_id: int, item: ItemList):
+    results = {"item_id": item_id, "item": item}
+    return results</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">name:</label>
+            <label slot="labels">description:</label>
+            <label slot="labels">price:</label>
+            <label slot="labels">tax:</label>
+            <label slot="labels">tags:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/list/0">
+            <input slot="inputs" type="text" name="method" value="PUT">
+            <input slot="inputs" type="text" name="name" value="Foo">
+            <input slot="inputs" type="text" name="description" value="The pretender">
+            <input slot="inputs" type="text" name="price" value="42.0">
+            <input slot="inputs" type="text" name="tax" value="3.2">
+            <input slot="inputs" type="text" name="tags" value='["tag1", 1, 2.46, true]'>
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Это приведет к тому, что <code>tags</code> будет списком, несмотря на то, что тип его элементов не объявлен.</p>
+
+        <h2>Поля-списки с параметром типа</h2>
+        <p>В Python есть специальный способ объявлять списки с внутренними типами, или «параметрами типа».</p>
+        <p>Для объявления типов, у которых есть параметры типа (внутренние типы), таких как <code>list</code>,
+        <code>dict</code>, <code>tuple</code>:</p>
+        <ul>
+            <li>
+                <p>Передайте внутренний(ие) тип(ы) как «параметры типа», используя квадратные скобки: <code>[</code>
+                и <code>]</code>.</p>
+            </li>
+        </ul>
+        <pre><code class="language-python">my_list: list[str]</code></pre>
+        <p>Это все стандартный синтаксис Python для объявления типов.</p>
+        <p>Используйте этот же стандартный синтаксис для атрибутов модели с внутренними типами.</p>
+        <p>Таким образом, в нашем примере мы можем явно указать тип данных для поля <code>tags</code>
+        как «список строк»:</p>
+<pre data-line="20" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class ItemListStr(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+    tags: list[str] = []
+
+
+@app.put("/items/list_str/{item_id}")
+async def update_item(item_id: int, item: ItemListStr):
+    results = {"item_id": item_id, "item": item}
+    return results</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">name:</label>
+            <label slot="labels">description:</label>
+            <label slot="labels">price:</label>
+            <label slot="labels">tax:</label>
+            <label slot="labels">tags:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/list_str/0">
+            <input slot="inputs" type="text" name="method" value="PUT">
+            <input slot="inputs" type="text" name="name" value="Foo">
+            <input slot="inputs" type="text" name="description" value="The pretender">
+            <input slot="inputs" type="text" name="price" value="42.0">
+            <input slot="inputs" type="text" name="tax" value="3.2">
+            <input slot="inputs" type="text" name="tags" value='["rock", "metal", "bar"]'>
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h2>Типы множеств</h2>
+        <p>Но затем мы подумали и поняли, что теги не должны повторяться, вероятно, это должны быть уникальные строки.</p>
+        <p>И в Python есть специальный тип данных для множеств уникальных элементов - <code>set</code>.</p>
+        <p>Тогда мы можем объявить поле <code>tags</code> как множество строк:</p>
+<pre data-line="20" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class ItemSetStr(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+    tags: set[str] = set()
+
+
+@app.put("/items/set_str/{item_id}")
+async def update_item(item_id: int, item: ItemSetStr):
+    results = {"item_id": item_id, "item": item}
+    return results</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">name:</label>
+            <label slot="labels">description:</label>
+            <label slot="labels">price:</label>
+            <label slot="labels">tax:</label>
+            <label slot="labels">tags:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/set_str/0">
+            <input slot="inputs" type="text" name="method" value="PUT">
+            <input slot="inputs" type="text" name="name" value="Foo">
+            <input slot="inputs" type="text" name="description" value="The pretender">
+            <input slot="inputs" type="text" name="price" value="42.0">
+            <input slot="inputs" type="text" name="tax" value="3.2">
+            <input slot="inputs" type="text" name="tags" value='["rock", "metal", "bar", "rock", "metal", "bar"]'>
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>С помощью этого, даже если вы получите запрос с повторяющимися данными, они будут преобразованы в множество
+        уникальных элементов.</p>
+        <p>И когда вы выводите эти данные, даже если исходный набор содержал дубликаты, они будут выведены в виде
+        множества уникальных элементов.</p>
+        <p>И они также будут соответствующим образом аннотированы/задокументированы.</p>
+
+        <h2>Вложенные модели</h2>
+        <p>У каждого атрибута Pydantic-модели есть тип.</p>
+        <p>Но этот тип сам может быть другой моделью Pydantic.</p>
+        <p>Таким образом, вы можете объявлять глубоко вложенные JSON «объекты» с определенными именами атрибутов,
+        типами и валидацией.</p>
+        <p>Все это может быть произвольно вложенным.</p>
+
+        <h3>Определение подмодели</h3>
+        <p>Например, мы можем определить модель <code>Image</code>:</p>
+<pre data-line="15-17" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class Image(BaseModel):
+    url: str
+    name: str
+
+
+class ItemWithImage(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+    tags: set[str] = set()
+    image: Image | None = None
+
+
+@app.put("/items/item_with_image/{item_id}")
+async def update_item(item_id: int, item: ItemWithImage):
+    results = {"item_id": item_id, "item": item}
+    return results</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">name:</label>
+            <label slot="labels">description:</label>
+            <label slot="labels">price:</label>
+            <label slot="labels">tax:</label>
+            <label slot="labels">tags:</label>
+            <label slot="labels">image:</label>
+            <label slot="labels" style="padding-left: 1ch">url:</label>
+            <label slot="labels" style="padding-left: 1ch">name:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/item_with_image/0">
+            <input slot="inputs" type="text" name="method" value="PUT">
+            <input slot="inputs" type="text" name="name" value="Foo">
+            <input slot="inputs" type="text" name="description" value="The pretender">
+            <input slot="inputs" type="text" name="price" value="42.0">
+            <input slot="inputs" type="text" name="tax" value="3.2">
+            <input slot="inputs" type="text" name="tags" value='["rock", "metal", "bar"]'>
+            <input slot="inputs" style="visibility: hidden">
+            <input slot="inputs" data-body="image" type="text" name="url" value="http://example.com/baz.jpg">
+            <input slot="inputs" data-body="image" type="text" name="name" value="The Foo live">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h3>Использование подмодели как типа</h3>
+        <p>Также мы можем использовать эту модель как тип атрибута:</p>
+<pre data-line="26" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class Image(BaseModel):
+    url: str
+    name: str
+
+
+class ItemWithImage(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+    tags: set[str] = set()
+    image: Image | None = None
+
+
+@app.put("/items/item_with_image/{item_id}")
+async def update_item(item_id: int, item: ItemWithImage):
+    results = {"item_id": item_id, "item": item}
+    return results</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">name:</label>
+            <label slot="labels">description:</label>
+            <label slot="labels">price:</label>
+            <label slot="labels">tax:</label>
+            <label slot="labels">tags:</label>
+            <label slot="labels">image:</label>
+            <label slot="labels" style="padding-left: 1ch">url:</label>
+            <label slot="labels" style="padding-left: 1ch">name:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/item_with_image/0">
+            <input slot="inputs" type="text" name="method" value="PUT">
+            <input slot="inputs" type="text" name="name" value="Foo">
+            <input slot="inputs" type="text" name="description" value="The pretender">
+            <input slot="inputs" type="text" name="price" value="42.0">
+            <input slot="inputs" type="text" name="tax" value="3.2">
+            <input slot="inputs" type="text" name="tags" value='["rock", "metal", "bar"]'>
+            <input slot="inputs" style="visibility: hidden">
+            <input slot="inputs" data-body="image" type="text" name="url" value="http://example.com/baz.jpg">
+            <input slot="inputs" data-body="image" type="text" name="name" value="The Foo live">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Это означает, что <b>FastAPI</b> будет ожидать тело запроса, аналогичное этому:</p>
+<pre><code class="language-json">{
+    "name": "Foo",
+    "description": "The pretender",
+    "price": 42.0,
+    "tax": 3.2,
+    "tags": ["rock", "metal", "bar"],
+    "image": {
+        "url": "http://example.com/baz.jpg",
+        "name": "The Foo live"
+    }
+}</code></pre>
+        <p>Еще раз: сделав такое объявление, с помощью <b>FastAPI</b> вы получите:</p>
+        <ul>
+            <li>
+                <p>Поддержку редактора кода, даже для вложенных моделей.</p>
+            </li>
+            <li>
+                <p>Преобразование данных.</p>
+            </li>
+            <li>
+                <p>Валидацию данных.</p>
+            </li>
+            <li>
+                <p>Автоматическую документацию.</p>
+            </li>
+        </ul>
+
+        <h2>Особые типы и валидация</h2>
+        <p>Помимо обычных простых типов, таких как <code>str</code>, <code>int</code>, <code>float</code> и т.д.,
+        вы можете использовать более сложные простых типы, которые наследуются от <code>str</code>.</p>
+        <p>Чтобы увидеть все варианты, которые у вас есть, ознакомьтесь с
+        <a target="_blank" href="https://docs.pydantic.dev/latest/concepts/types/">обзором типов Pydantic</a>.
+        Вы увидите некоторые примеры в следующей главе.</p>
+        <p>Например, так как в модели <code>Image</code> у нас есть поле <code>url</code>, то мы можем объявить его
+        как тип <code>HttpUrl</code> из Pydantic вместо типа <code>str</code>:</p>
+<pre data-line="3, 16" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, HttpUrl
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class Image(BaseModel):
+    url: HttpUrl
+    name: str
+
+
+class ItemWithImage(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+    tags: set[str] = set()
+    image: Image | None = None
+
+
+@app.put("/items/item_with_image/{item_id}")
+async def update_item(item_id: int, item: ItemWithImage):
+    results = {"item_id": item_id, "item": item}
+    return results</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">name:</label>
+            <label slot="labels">description:</label>
+            <label slot="labels">price:</label>
+            <label slot="labels">tax:</label>
+            <label slot="labels">tags:</label>
+            <label slot="labels">image:</label>
+            <label slot="labels" style="padding-left: 1ch">url:</label>
+            <label slot="labels" style="padding-left: 1ch">name:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/item_with_image/0">
+            <input slot="inputs" type="text" name="method" value="PUT">
+            <input slot="inputs" type="text" name="name" value="Foo">
+            <input slot="inputs" type="text" name="description" value="The pretender">
+            <input slot="inputs" type="text" name="price" value="42.0">
+            <input slot="inputs" type="text" name="tax" value="3.2">
+            <input slot="inputs" type="text" name="tags" value='["rock", "metal", "bar"]'>
+            <input slot="inputs" style="visibility: hidden">
+            <input slot="inputs" data-body="image" type="text" name="url" value="http://example.com/baz.jpg">
+            <input slot="inputs" data-body="image" type="text" name="name" value="The Foo live">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Строка будет проверена на соответствие допустимому URL-адресу и задокументирована в JSON Schema/OpenAPI
+        как таковая.</p>
+
+        <h2>Атрибуты, содержащие списки подмоделей</h2>
+        <p>Вы также можете использовать модели Pydantic в качестве подтипов для <code>list</code>, <code>set</code>
+        и т.д.:</p>
+<pre data-line="26" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, HttpUrl
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class Image(BaseModel):
+    url: HttpUrl
+    name: str
+
+
+class ItemWithImages(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+    tags: set[str] = set()
+    images: list[Image] | None = None
+
+
+@app.put("/items/item_with_images/{item_id}")
+async def update_item(item_id: int, item: ItemWithImages):
+    results = {"item_id": item_id, "item": item}
+    return results</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">json:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/item_with_images/0">
+            <input slot="inputs" type="text" name="method" value="PUT">
+<textarea slot="inputs">{
+    "name": "Foo",
+    "description": "The pretender",
+    "price": 42.0,
+    "tax": 3.2,
+    "tags": [
+        "rock",
+        "metal",
+        "bar"
+    ],
+    "images": [
+        {
+            "url": "http://example.com/baz.jpg",
+            "name": "The Foo live"
+        },
+        {
+            "url": "http://example.com/dave.jpg",
+            "name": "The Baz"
+        }
+    ]
+}</textarea>
+            <button slot="buttons">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Такая реализация будет ожидать (конвертировать, валидировать, документировать и т.д.) JSON-содержимое
+        в следующем формате:</p>
+<pre><code class="language-json">{
+    "name": "Foo",
+    "description": "The pretender",
+    "price": 42.0,
+    "tax": 3.2,
+    "tags": [
+        "rock",
+        "metal",
+        "bar"
+    ],
+    "images": [
+        {
+            "url": "http://example.com/baz.jpg",
+            "name": "The Foo live"
+        },
+        {
+            "url": "http://example.com/dave.jpg",
+            "name": "The Baz"
+        }
+    ]
+}</code></pre>
+        <div class="admonition info">
+            <h3>Информация</h3>
+            <p>Заметьте, что теперь у ключа <code>images</code> есть список объектов изображений.</p>
+        </div>
+
+        <h2>Тела с чистыми списками элементов</h2>
+        <p>Если верхний уровень значения тела JSON-объекта представляет собой JSON <code>array</code> (в Python -
+        <code>list</code>), вы можете объявить тип в параметре функции, так же как в моделях Pydantic:</p>
+        <pre><code class="language-python">images: list[Image]</code></pre>
+        <p>Например, так:</p>
+<pre data-line="21" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, HttpUrl
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class Image(BaseModel):
+    url: HttpUrl
+    name: str
+
+
+@app.post("/images/multiple")
+async def create_multiple_images(images: list[Image]):
+    return images</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">json:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/images/multiple">
+            <input slot="inputs" type="text" name="method" value="POST">
+<textarea slot="inputs">[
+    {
+        "url": "http://example.com/baz.jpg",
+        "name": "The Foo live"
+    },
+    {
+        "url": "http://example.com/dave.jpg",
+        "name": "The Baz"
+    }
+]</textarea>
+            <button slot="buttons">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h2>Тела запросов с произвольными словарями (<code>dict</code>)</h2>
+        <p>Вы также можете объявить тело запроса как <code>dict</code> с ключами определенного типа и значениями
+        другого типа.</p>
+        <p>Без необходимости знать заранее, какие значения являются допустимыми для имен полей/атрибутов
+        (как это было в случае с моделями Pydantic).</p>
+        <p>Это было бы полезно, если вы хотите получить ключи, которые вы еще не знаете.</p>
+        <p>Другой полезный случай - когда вы хотите, чтобы ключи были другого типа данных, например, <code>int</code>.</p>
+        <p>Именно это мы сейчас и увидим здесь.</p>
+        <p>В этом случае вы принимаете любой <code>dict</code>, пока у него есть ключи типа <code>int</code> со
+        значениями типа <code>float</code>:</p>
+<pre data-line="21" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.post("/index-weights")
+async def create_index_weights(weights: dict[int, float]):
+    return weights</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">json:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/index-weights">
+            <input slot="inputs" type="text" name="method" value="POST">
+<textarea slot="inputs">{
+    "1": 2.3,
+    "2": 3.4,
+    "3": 4.5
+}</textarea>
+            <button slot="buttons">Отправить</button>
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <div class="admonition tip">
+            <h3>Совет</h3>
+            <p>Имейте в виду, что JSON поддерживает только ключи типа <code>str</code>.</p>
+            <p>Но Pydantic обеспечивает автоматическое преобразование данных.</p>
+            <p>Это значит, что даже если клиенты вашего API могут отправлять только строки в качестве ключей, при
+            условии, что эти строки содержат целые числа, Pydantic автоматически преобразует и валидирует эти данные.</p>
+            <p>А <code>dict</code>, который вы получите как <code>weights</code>, действительно будет иметь ключи
+            типа <code>int</code> и значения типа <code>float</code>.</p>
+        </div>
+
+        <h2>Резюме</h2>
+        <p>С помощью <b>FastAPI</b> вы получаете максимальную гибкость, предоставляемую моделями Pydantic, сохраняя
+        при этом простоту, краткость и элегантность вашего кода.</p>
+        <p>И дополнительно вы получаете:</p>
+        <ul>
+            <li>
+                <p>Поддержку редактора кода.</p>
+            </li>
+            <li>
+                <p>Преобразование данных.</p>
+            </li>
+            <li>
+                <p>Валидацию данных.</p>
+            </li>
+            <li>
+                <p>Документацию схемы данных.</p>
+            </li>
+            <li>
+                <p>Автоматическую генерацию документации.</p>
+            </li>
+        </ul>
+    </article>
+</body>
+</html>

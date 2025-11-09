@@ -50,10 +50,20 @@ document.querySelectorAll('pre').forEach((elem) => {
 });
 
 document.addEventListener('keydown', function(event) {
-    if (event.code === 'Enter') {
+    if (event.code === 'Enter' && document.activeElement.tagName !== 'TEXTAREA') {
         let form  = document.activeElement.assignedSlot?.closest('form');
         if (form) {
             form.querySelector('slot[name="buttons"]').assignedElements({flatten: true}).at(0).click();
+        }
+    }
+    if (event.code === 'Tab') {
+        if (document.activeElement.tagName === 'TEXTAREA') {
+            event.preventDefault();
+            const textarea = document.activeElement;
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            textarea.value = textarea.value.substring(0, start) + '\t' + textarea.value.substring(end);
+            textarea.selectionStart = textarea.selectionEnd = start + 1;
         }
     }
 });
@@ -120,6 +130,7 @@ customElements.define('request-response-container', class extends HTMLElement {
                 
                 ::slotted(button:hover),
                 ::slotted(input:hover),
+                ::slotted(textarea:hover),
                 ::slotted(input:focus) {
                     outline: none;
                     box-shadow: 0 0 1rem rgba(0, 0, 0, 0.2);
@@ -136,6 +147,26 @@ customElements.define('request-response-container', class extends HTMLElement {
                     margin: 0 !important;
                     min-height: 100%;
                 }
+                
+                ::slotted(textarea) {
+                    display: block;
+                    width: 100%;
+                    border: 0.1rem solid var(--code-background-color);
+                    border-radius: 0.5rem;
+                    padding-left: 0.5rem;
+                    font-family: 'Roboto', sans-serif;
+                    transition: box-shadow 0.5s;
+                    min-height: 15rem;
+                    resize: none;
+                    margin-top: 0.3rem;
+                    font-size: 1.1rem;
+                    outline: none;
+                    overflow-x: auto;
+                    overflow-y: hidden;
+                    line-height: 1.5rem;
+                    tab-size: 4;
+                    letter-spacing: 0.05ch;
+                }   
             </style>
             
             <form>
@@ -154,6 +185,16 @@ customElements.define('request-response-container', class extends HTMLElement {
         let button = this.shadowRoot.querySelector('slot[name="buttons"]').assignedElements({flatten: true}).at(0);
         let inputs = this.shadowRoot.querySelector('slot[name="inputs"]').assignedElements({flatten: true});
         let pre = this.shadowRoot.querySelector('slot[name="response"]').assignedElements({flatten: true}).at(0);
+        let textarea  = inputs.find(element => {
+            return element.tagName === 'TEXTAREA'
+        });
+        
+        if (textarea) {
+            textarea.style.height = textarea.scrollHeight + 'px';
+            textarea.addEventListener('input', function() {
+                textarea.style.height = textarea.scrollHeight + 'px';
+            });
+        }
         
         button.addEventListener('click', function() {
             this.assignedSlot.parentElement.style.width = '50%';
@@ -165,18 +206,23 @@ customElements.define('request-response-container', class extends HTMLElement {
             let url = inputs.at(0).value;
             let method = inputs.at(1).value;
             let data = {};
-            for (let input of inputs) {
-                if (input.name.toLowerCase() === 'url' || input.name.toLowerCase() === 'method') {
-                    continue;
-                }
+            for (let input of inputs.slice(2)) {
                 if (input.value) {
+                    let value = input.value;
+                    if (input.tagName === 'TEXTAREA') {
+                        data = JSON.parse(value);
+                        continue;
+                    }
+                    if (/^\[.*]$/.test(value)) {
+                        value = JSON.parse(value);
+                    }
                     if (input.dataset.body) {
                         if (!data[input.dataset.body]) {
                             data[input.dataset.body] = {};
                         }
-                        data[input.dataset.body][input.name] = input.value;
+                        data[input.dataset.body][input.name] = value;
                     } else {
-                        data[input.name] = input.value;
+                        data[input.name] = value;
                     }
                 }
             }
