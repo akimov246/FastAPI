@@ -227,7 +227,8 @@ customElements.define('request-response-container', class extends HTMLElement {
                 }
             }
             let requestInit = {
-                    method: method
+                    method: method,
+                    credentials: 'include'
             }
             if (method.toLowerCase() !== 'get' && Object.keys(data).length) {
                 requestInit.headers = {
