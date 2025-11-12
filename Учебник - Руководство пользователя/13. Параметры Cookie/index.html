@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Параметры Cookie</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Параметры Cookie</h1>
+        <p>Вы можете задать параметры Cookie таким же способом, как <code>Query</code> и <code>Path</code> параметры.</p>
+
+        <h2>Импорт <code>Cookie</code></h2>
+        <p>Сначала импортируйте <code>Cookie</code>:</p>
+<pre data-line="6" class="line-numbers"><code class="language-python">import random
+
+from typing import Annotated
+from string import ascii_uppercase
+
+from fastapi import FastAPI, Cookie, Response
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        'http://localhost:63342',
+        'http://localhost:8000',
+        'http://127.0.0.1:8000',
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/")
+async def root(response: Response, ads_id: Annotated[str | None, Cookie()] = None):
+    if not ads_id:
+        response.set_cookie(
+            key="ads_id",
+            value=str(random.randint(1, 9)) + random.choice(ascii_uppercase),
+            max_age=5,
+            samesite='none',
+            secure=True
+        )
+    return {"ads_id": ads_id}</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h2>Объявление параметров <code>Cookie</code></h2>
+        <p>Затем объявляйте параметры cookie, используя ту же структуру, что и с <code>Path</code> и <code>Query</code>.</p>
+        <p>Вы можете задать значение по умолчанию, а также все дополнительные параметры валидации или аннотации:</p>
+<pre data-line="25" class="line-numbers"><code class="language-python">import random
+
+from typing import Annotated
+from string import ascii_uppercase
+
+from fastapi import FastAPI, Cookie, Response
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        'http://localhost:63342',
+        'http://localhost:8000',
+        'http://127.0.0.1:8000',
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/")
+async def root(response: Response, ads_id: Annotated[str | None, Cookie()] = None):
+    if not ads_id:
+        response.set_cookie(
+            key="ads_id",
+            value=str(random.randint(1, 9)) + random.choice(ascii_uppercase),
+            max_age=5,
+            samesite='none',
+            secure=True
+        )
+    return {"ads_id": ads_id}</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <div class="admonition note">
+            <h3>Технические детали</h3>
+            <p><code>Cookie</code> - это класс, родственный <code>Path</code> и <code>Query</code>. Он также наследуется
+            от общего класса <code>Param</code>.</p>
+            <p>Но помните, что когда вы импортируете <code>Query</code>, <code>Path</code>, <code>Cookie</code>
+            и другое из <code>fastapi</code>, это фактически функции, которые возвращают специальные классы.</p>
+        </div>
+        <div class="admonition info">
+            <h3>Дополнительная информация</h3>
+            <p>Для объявления cookies, вам нужно использовать <code>Cookie</code>, иначе параметры будут интерпретированы
+            как параметры запроса.</p>
+        </div>
+        <div class="admonition info">
+            <h3>Дополнительная информация</h3>
+            <p>Имейте в виду, что, поскольку браузеры обрабатывают cookies особым образом и «за кулисами», они не
+            позволяют JavaScript просто так получать к ним доступ.</p>
+            <p>Если вы откроете интерфейс документации API на
+            <a target="_blank" href="http://127.0.0.1:8000/docs">http://127.0.0.1:8000/docs</a>, вы сможете увидеть
+            документацию по cookies для операций пути.</p>
+            <p>Но даже если вы заполните данные и нажмете «Execute», поскольку UI документации работает с JavaScript,
+            cookies отправлены не будут, и вы увидите сообщение об ошибке, как будто вы не указали никаких значений.</p>
+        </div>
+
+        <h2>Резюме</h2>
+        <p>Отправляйте cookies с помощью <code>Cookie</code>, используя тот же общий шаблон, что и <code>Query</code>,
+        и <code>Path</code>.</p>
+    </article>
+</body>
+</html>

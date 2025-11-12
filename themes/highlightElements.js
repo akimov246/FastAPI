@@ -126,9 +126,11 @@ customElements.define('request-response-container', class extends HTMLElement {
                     cursor: pointer;
                     height: 2rem;
                     transition: box-shadow 0.5s;
+                    outline: none;
                 }
                 
                 ::slotted(button:hover),
+                ::slotted(button:focus),
                 ::slotted(input:hover),
                 ::slotted(textarea:hover),
                 ::slotted(input:focus) {
