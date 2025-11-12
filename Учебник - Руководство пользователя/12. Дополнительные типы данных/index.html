@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Дополнительные типы данных</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Дополнительные типы данных</h1>
+        <p>До сих пор вы использовали простые типы данных, такие как:</p>
+        <ul>
+            <li>
+                <p><code>int</code></p>
+            </li>
+            <li>
+                <p><code>float</code></p>
+            </li>
+            <li>
+                <p><code>str</code></p>
+            </li>
+            <li>
+                <p><code>bool</code></p>
+            </li>
+        </ul>
+        <p>Но вы также можете использовать и более сложные типы.</p>
+        <p>При этом у вас останутся те же возможности, что и до сих пор:</p>
+        <ul>
+            <li>
+                <p>Отличная поддержка редактора кода.</p>
+            </li>
+            <li>
+                <p>Преобразование данных из входящих запросов.</p>
+            </li>
+            <li>
+                <p>Преобразование данных для ответа.</p>
+            </li>
+            <li>
+                <p>Валидация данных.</p>
+            </li>
+            <li>
+                <p>Автоматическая аннотация и документация.</p>
+            </li>
+        </ul>
+
+        <h2>Другие типы данных</h2>
+        <p>Ниже перечислены некоторые из дополнительных типов данных, которые вы можете использовать:</p>
+        <ul>
+            <li>
+                <p><code>UUID</code>:</p>
+                <ul>
+                    <li>
+                        <p>Стандартный «Универсальный уникальные идентификатор», используемый в качестве идентификатора
+                        во многих базах данных и системах.</p>
+                    </li>
+                    <li>
+                        <p>В запросах и ответах будет представлен как <code>str</code>.</p>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <p><code>datetime.datetime</code>:</p>
+                <ul>
+                    <li>
+                        <p>Встроенные в Python <code>datetime.datetime</code>.</p>
+                    </li>
+                    <li>
+                        <p>В запросах и ответах будет представлен как <code>str</code> в формате ISO 8601, например:
+                        <code>2008-09-15T15:53:00+05:00</code>.</p>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <p><code>datetime.date</code>:</p>
+                <ul>
+                    <li>
+                        <p>Встроенный в Python <code>datetime.date</code>.</p>
+                    </li>
+                    <li>
+                        <p>В запросах и ответах будет представлен как <code>str</code> в формате ISO 8601, например:
+                        <code>2008-09-15</code>.</p>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <p><code>datetime.time</code>:</p>
+                <ul>
+                    <li>
+                        <p>Встроенный в Python <code>datetime.time</code>.</p>
+                    </li>
+                    <li>
+                        <p>В запросах и ответах будет представлен как <code>str</code> в формате ISO 8601, например:
+                        <code>14:23:55.003</code>.</p>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <p><code>datetime.timedelta</code>:</p>
+                <ul>
+                    <li>
+                        <p>Встроенный в Python <code>datetime.timedelta</code>.</p>
+                    </li>
+                    <li>
+                        <p>В запросах и ответах будет представлен в виде общего количества секунд типа <code>float</code>.</p>
+                    </li>
+                    <li>
+                        <p>Pydantic также позволяет представить его как «Кодировку разницы во времени ISO 8601»,
+                        <a target="_blank" href="https://docs.pydantic.dev/latest/concepts/serialization/#custom-serializers">см. документацию для получения дополнительной информации</a>.</p>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <p><code>frozenset</code>:</p>
+                <ul>
+                    <li>
+                        <p>В запросах и ответах обрабатывается также, как и <code>set</code>:</p>
+                        <ul>
+                            <li>
+                                <p>В запросах будет прочитан список, исключены дубликаты и преобразован в <code>set</code>.</p>
+                            </li>
+                            <li>
+                                <p>В ответах <code>set</code> будет преобразован в <code>list</code>.</p>
+                            </li>
+                            <li>
+                                <p>В сгенерированной схеме будет указано, что значения <code>set</code> уникальны
+                                (с помощью JSON-схемы <code>uniqueItems</code>).</p>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <p><code>bytes</code>:</p>
+                <ul>
+                    <li>
+                        <p>Встроенные в Python <code>bytes</code>.</p>
+                    </li>
+                    <li>
+                        <p>В запросах и ответах будет рассматриваться как <code>str</code>.</p>
+                    </li>
+                    <li>
+                        <p>В сгенерированной схеме будет указано, что это <code>str</code> в формате <code>binary</code>.</p>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <p><code>Decimal</code>:</p>
+                <ul>
+                    <li>
+                        <p>Встроенный в Python <code>Decimal</code>.</p>
+                    </li>
+                    <li>
+                        <p>В запросах и ответах обрабатывается так же, как и <code>float</code>.</p>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <p>Вы можете проверить все допустимые типы данных Pydantic здесь:
+                <a target="_blank" href="https://docs.pydantic.dev/latest/usage/types/types/">Типы данных Pydantic</a>.</p>
+            </li>
+        </ul>
+
+        <h2>Пример</h2>
+        <p>Вот пример <i>операции пути</i> с параметрами, который демонстрирует некоторые из вышеперечисленных типов.</p>
+<pre data-line="1, 3, 20-24" class="line-numbers"><code class="language-python">from datetime import datetime, time, timedelta
+from typing import Annotated
+from uuid import UUID
+
+from fastapi import Body, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.put("/items/{item_id}")
+async def read_items(
+    item_id: UUID,
+    start_datetime: Annotated[datetime, Body()],
+    end_datetime: Annotated[datetime, Body()],
+    process_after: Annotated[timedelta, Body()],
+    repeat_at: Annotated[time | None, Body()] = None,
+):
+    start_process = start_datetime + process_after
+    duration = end_datetime - start_process
+    return {
+        "item_id": item_id,
+        "start_datetime": start_datetime,
+        "end_datetime": end_datetime,
+        "process_after": process_after,
+        "repeat_at": repeat_at,
+        "start_process": start_process,
+        "duration": duration,
+    }</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">start_datetime:</label>
+            <label slot="labels">end_datetime:</label>
+            <label slot="labels">process_after:</label>
+            <label slot="labels">repeat_at:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/abcdefABCDEF123456789ABCDEF12345">
+            <input slot="inputs" type="text" name="method" value="PUT">
+            <input slot="inputs" type="text" name="start_datetime" value="2025-11-12T00:00:00+07:00">
+            <input slot="inputs" type="text" name="end_datetime" value="2025-11-22T00:00:00+07:00">
+            <input slot="inputs" type="text" name="process_after" value="PT1H">
+            <input slot="inputs" type="text" name="repeat_at" value="21:00:00">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Обратите внимание, что параметры внутри функции имеют свой естественный тип данных, и вы, например, можете
+        выполнять обычные манипуляции с датами, такие как:</p>
+<pre data-line="26-27" class="line-numbers"><code class="language-python">from datetime import datetime, time, timedelta
+from typing import Annotated
+from uuid import UUID
+
+from fastapi import Body, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.put("/items/{item_id}")
+async def read_items(
+    item_id: UUID,
+    start_datetime: Annotated[datetime, Body()],
+    end_datetime: Annotated[datetime, Body()],
+    process_after: Annotated[timedelta, Body()],
+    repeat_at: Annotated[time | None, Body()] = None,
+):
+    start_process = start_datetime + process_after
+    duration = end_datetime - start_process
+    return {
+        "item_id": item_id,
+        "start_datetime": start_datetime,
+        "end_datetime": end_datetime,
+        "process_after": process_after,
+        "repeat_at": repeat_at,
+        "start_process": start_process,
+        "duration": duration,
+    }</code></pre>
+    </article>
+</body>
+</html>
