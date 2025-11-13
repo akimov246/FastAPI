@@ -203,8 +203,8 @@ customElements.define('request-response-container', class extends HTMLElement {
             this.assignedSlot.parentElement.nextElementSibling.style.opacity = '1';
             this.assignedSlot.parentElement.nextElementSibling.style.width = '50%';
             this.assignedSlot.parentElement.getRootNode().host.style.gap = '0.5rem';
-
             pre.innerHTML = '';
+            
             let url = inputs.at(0).value;
             let method = inputs.at(1).value;
             let data = {};
@@ -230,12 +230,16 @@ customElements.define('request-response-container', class extends HTMLElement {
             }
             let requestInit = {
                     method: method,
-                    credentials: 'include'
+                    credentials: 'include',
+                    headers: new Headers()
+            }
+            if (button.dataset.extraHeadersJson) {
+                for (let header of JSON.parse(button.dataset.extraHeadersJson)) {
+                    requestInit.headers.append(...Object.entries(header)[0]);
+                }
             }
             if (method.toLowerCase() !== 'get' && Object.keys(data).length) {
-                requestInit.headers = {
-                        'Content-type': 'application/json'
-                }
+                requestInit.headers.append('Content-Type', 'application/json');
                 requestInit.body = JSON.stringify(data)
             }
             fetch(url, requestInit)

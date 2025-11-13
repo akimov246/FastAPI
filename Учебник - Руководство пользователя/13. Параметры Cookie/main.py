@@ -3,7 +3,7 @@ import random
 from typing import Annotated
 from string import ascii_uppercase
 
-from fastapi import FastAPI, Cookie, Response, Request
+from fastapi import FastAPI, Cookie, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
@@ -22,7 +22,7 @@ app.add_middleware(
 
 
 @app.get("/")
-async def root(r: Request, response: Response, ads_id: Annotated[str | None, Cookie()] = None):
+async def root(response: Response, ads_id: Annotated[str | None, Cookie()] = None):
     if not ads_id:
         response.set_cookie(
             key="ads_id",
