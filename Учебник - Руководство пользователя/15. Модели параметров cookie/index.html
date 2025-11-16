@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Модели параметров cookie</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Модели параметров cookie</h1>
+        <p>Если у вас есть группа <b>cookies</b>, которые связаны между собой, вы можете создать <b>Pydantic-модель</b>
+        для их объявления.</p>
+        <p>Это позволит вам <b>переиспользовать модель</b> в <b>разных местах</b>, а также объявить проверки и
+        метаданные сразу для всех параметров.</p>
+        <div class="admonition tip">
+            <h3>Совет</h3>
+            <p>Такой же подход применяется для <code>Query</code>, <code>Cookie</code> и <code>Header</code>.</p>
+        </div>
+
+        <h2>Pydantic-модель для cookies</h2>
+        <p>Объявите параметры <code>cookie</code>, которые вам нужны, в <code>Pydantic-модели</code>, а затем объявите
+        параметр как <code>Cookie</code>:</p>
+<pre data-line="22-25, 29" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Cookie, Response
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://127.0.0.1:8000",
+        "http://localhost:8000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class Cookies(BaseModel):
+    session_id: str | None = None
+    fatebook_tracker: str | None = None
+    googall_tracker: str | None = None
+
+
+@app.get("/items/")
+async def read_items(cookies: Annotated[Cookies, Cookie()], response: Response):
+    response.set_cookie(
+        key="session_id",
+        value="session_id_value",
+        max_age=5,
+        samesite="none",
+        secure=True
+    )
+    response.set_cookie(
+        key="fatebook_tracker",
+        value="fatebook_tracker_value",
+        max_age=5,
+        samesite="none",
+        secure=True
+    )
+    response.set_cookie(
+        key="googall_tracker",
+        value="googall_tracker_value",
+        max_age=5,
+        samesite="none",
+        secure=True
+    )
+    return cookies</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p><b>FastAPI извлечет</b> данные для <b>каждого поля</b> из <b>cookies</b>, полученных в запросе, и выдаст
+        вам объявленную Pydantic-модель.</p>
+
+        <h2>Проверка сгенерированной документации</h2>
+        <p>Вы можете посмотреть объявленные cookies в графическом интерфейсе Документации:
+        <a target="_blank" href="http://127.0.0.1:8000/docs">http://127.0.0.1:8000/docs</a>.</p>
+
+        <h2>Запрет дополнительных cookies</h2>
+        <p>В некоторых случаях (не особо часто встречающихся) вам может понадобиться <b>ограничить</b> cookies,
+        которые вы хотите получать.</p>
+        <p>Теперь ваш API сам решает, принимать ли cookies.</p>
+        <p>Вы можете сконфигурировать Pydantic-модель так, чтобы запретить (<code>forbid</code>) любые дополнительные
+        (<code>extra</code>) поля:</p>
+<pre data-line="23" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Cookie, Response
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://127.0.0.1:8000",
+        "http://localhost:8000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class Cookies(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    session_id: str | None = None
+    fatebook_tracker: str | None = None
+    googall_tracker: str | None = None
+
+
+@app.get("/items/")
+async def read_items(cookies: Annotated[Cookies, Cookie()], response: Response):
+    response.set_cookie(
+        key="session_id",
+        value="session_id_value",
+        max_age=5,
+        samesite="none",
+        secure=True
+    )
+    response.set_cookie(
+        key="fatebook_tracker",
+        value="fatebook_tracker_value",
+        max_age=5,
+        samesite="none",
+        secure=True
+    )
+    response.set_cookie(
+        key="googall_tracker",
+        value="googall_tracker_value",
+        max_age=5,
+        samesite="none",
+        secure=True
+    )
+    response.set_cookie(
+        key="santa_tracker",
+        value="santa_tracker_value",
+        max_age=2,
+        samesite="none",
+        secure=True
+    )
+    return cookies</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Если клиент попробует отправить <b>дополнительные cookies</b>, то в ответ он получит <b>ошибку</b>.</p>
+        <p>Например, если клиент попытается отправить cookie <code>santa_tracker</code> со значением <code>good-list-please</code>,
+        то в ответ он получит <b>ошибку</b>, сообщающую ему, что cookie <code>santa_tracker</code> не разрешен:</p>
+<pre><code class="language-json">{
+    "detail": [
+        {
+            "type": "extra_forbidden",
+            "loc": ["cookie", "santa_tracker"],
+            "msg": "Extra inputs are not permitted",
+            "input": "good-list-please",
+        }
+    ]
+}</code></pre>
+
+        <h2>Заключение</h2>
+        <p>Вы можете использовать <b>Pydantic-модели</b> для объявления <b>cookies</b> в <b>FastAPI</b>.</p>
+    </article>
+</body>
+</html>
