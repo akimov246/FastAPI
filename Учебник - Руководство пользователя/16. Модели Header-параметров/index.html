@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Модели Header-параметров</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Модели Header-параметров</h1>
+        <p>Если у вас есть группа связанных <b>header-параметров</b>, то вы можете объединить их в одну <b>Pydantic-модель</b>.</p>
+        <p>Это позволит вам <b>переиспользовать модель</b> в <b>разных местах</b>, а также задать валидацию и метаданные
+        сразу для всех параметров.</p>
+
+        <h2>Header-параметры в виде Pydantic-модели</h2>
+        <p>Объявите нужные <b>header-параметры</b> в <b>Pydantic-модели</b> и затем аннотируйте параметр как
+        <code>Header</code>:</p>
+<pre data-line="22-27, 31" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Header
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class CommonHeaders(BaseModel):
+    host: str
+    save_data: bool
+    if_modified_since: str | None = None
+    traceparent: str | None = None
+    x_tag: list[str] = []
+
+
+@app.get("/items")
+async def read_items(headers: Annotated[CommonHeaders, Header()]):
+    return headers</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <script>
+            document.currentScript.previousElementSibling.querySelector('button')
+                .dataset.extraHeadersJson = `[{"Save-Data": true}, {"If-Modified-Since": "if_modified_since_value"}, {"Traceparent": "traceparent_value"}, {"X-Tag": ["x_tag1", "x_tag2", "x_tag3"]}]`;
+        </script>
+        <p><b>FastAPI извлечет</b> данные для <b>каждого поля</b> из <b>заголовков</b> запроса и выдаст заданную
+        вами Pydantic-модель.</p>
+
+        <h2>Проверьте документацию</h2>
+        <p>Вы можете посмотреть нужные header-параметры в графическом интерфейсе сгенерированной документации по
+        пути <a target="_blank" href="http://127.0.0.1:8000/docs">http://127.0.0.1:8000/docs</a>.</p>
+
+        <h2>Как запретить дополнительные заголовки</h2>
+        <p>В некоторых случаях (не особо часто встречающихся) вам может понадобиться <b>ограничить</b> заголовки,
+        которые вы хотите получать.</p>
+        <p>Вы можете использовать возможности конфигурации Pydantic-модели для того, чтобы запретить (<code>forbid</code>)
+        любые дополнительные (<code>extra</code>) поля:</p>
+<pre data-line="23" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Header
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class CommonHeadersExtraForbid(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    host: str
+    save_data: bool
+    if_modified_since: str | None = None
+    traceparent: str | None = None
+    x_tag: list[str] = []
+
+
+@app.get("/items/extra_forbid")
+async def read_items(headers: Annotated[CommonHeadersExtraForbid, Header()]):
+    return headers</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/extra_forbid">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <script>
+            document.currentScript.previousElementSibling.querySelector('button')
+                .dataset.extraHeadersJson = `[{"tool": "plumbus"}, {"Save-Data": true}, {"If-Modified-Since": "if_modified_since_value"}, {"Traceparent": "traceparent_value"}, {"X-Tag": ["x_tag1", "x_tag2", "x_tag3"]}]`;
+        </script>
+        <p>Если клиент попробует отправить <b>дополнительные заголовки</b>, то в ответ он получит <b>ошибку</b>.</p>
+        <p>Например, если клиент попытается отправить заголовок <code>tool</code> со значением <code>plumbus</code>,
+        то в ответ он получит ошибку, сообщающую ему, что header-параметр <code>tool</code> не разрешен:</p>
+<pre><code class="language-json">{
+    "detail": [
+        {
+            "type": "extra_forbidden",
+            "loc": ["header", "tool"],
+            "msg": "Extra inputs are not permitted",
+            "input": "plumbus",
+        }
+    ]
+}</code></pre>
+
+        <h2>Как отключить автоматическое преобразование подчеркиваний</h2>
+        <p>Как и в случае с обычными заголовками, если у вас в именах параметров имеются символы подчеркивания,
+        они <b>автоматически преобразуются в дефис</b>.</p>
+        <p>Например, если в коде есть header-параметр <code>save_data</code>, то ожидаемый HTTP-заголовок будет
+        <code>save-data</code> и именно так он будет отображаться в документации.</p>
+        <p>Если по каким-то причинам вам нужно отключить данное автоматическое преобразование, это можно сделать
+        и для Pydantic-моделей для header-параметров.</p>
+<pre data-line="31" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Header
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class CommonHeaders(BaseModel):
+    host: str
+    save_data: bool
+    if_modified_since: str | None = None
+    traceparent: str | None = None
+    x_tag: list[str] = []
+
+
+@app.get("/items/underscored")
+async def read_items(headers: Annotated[CommonHeaders, Header(convert_underscores=False)]):
+    return headers</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/underscored">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <script>
+            document.currentScript.previousElementSibling.querySelector('button')
+                .dataset.extraHeadersJson = `[{"Save_Data": true}, {"If_Modified_Since": "if_modified_since_value"}, {"Traceparent": "traceparent_value"}, {"X_Tag": ["x_tag1", "x_tag2", "x_tag3"]}]`;
+        </script>
+        <div class="admonition warning">
+            <h3>Внимание</h3>
+            <p>Перед тем как устанавливать для параметра <code>convert_underscores</code> значение <code>False</code>,
+            имейте в виду, что некоторые HTTP-прокси и серверы не разрешают использовать заголовки с символами
+            подчеркивания.</p>
+        </div>
+
+        <h2>Резюме</h2>
+        <p>Вы можете использовать <b>Pydantic-модели</b> для объявления <code>header-параметров</code> в <b>FastAPI</b>.</p>
+    </article>
+</body>
+</html>
