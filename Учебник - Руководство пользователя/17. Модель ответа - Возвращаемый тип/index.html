@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Модель ответа - Возвращаемый тип</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Модель ответа - Возвращаемый тип</h1>
+        <p>Вы можете объявить тип, используемый для ответа, указав аннотацию <b>возвращаемого значения</b> для
+        <i>функции-обработчика пути</i>.</p>
+        <p>Вы можете использовать <b>аннотации типов</b> так же, как и для входных данных в <b>параметрах</b>
+        функции: Pydantic-модели, списки, словари, скалярные значения (целые числа, булевы и т.д.).</p>
+<pre data-line="29, 34" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8080",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class Item(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+    tags: list[str] = []
+
+
+@app.post("/items")
+async def create_item(item: Item) -> Item:
+    return item
+
+
+@app.get("/items")
+async def read_items() -> list[Item]:
+    return [
+        Item(name="Portal Gun", price=42.0),
+        Item(name="Plumbus", price=32.0),
+    ]</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">name:</label>
+            <label slot="labels">description:</label>
+            <label slot="labels">price:</label>
+            <label slot="labels">tax:</label>
+            <label slot="labels">tags:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="name" value="Foo">
+            <input slot="inputs" type="text" name="description" value="The pretender">
+            <input slot="inputs" type="text" name="price" value="42.0">
+            <input slot="inputs" type="text" name="tax" value="3.2">
+            <input slot="inputs" type="text" name="tags" value='["rock", "metal", "bar"]'>
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>FastAPI будет использовать этот тип ответа для:</p>
+        <ul>
+            <li>
+                <p><b>Валидации</b> возвращаемых данных.</p>
+                <ul>
+                    <li>
+                        <p>Если данные невалидны (например, отсутствует поле), это означает, что код <i>вашего</i>
+                        приложения работает некорректно и возвращает не то, что должен. В таком случае будет
+                        возвращена ошибка сервера вместо неправильных данных. Так вы и ваши клиенты можете быть
+                        уверены, что получите ожидаемые данные и ожидаемую структуру.</p>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <p>Добавление <b>JSON Schema</b> для ответа в OpenAPI <i>операции пути</i>.</p>
+                <ul>
+                    <li>
+                        <p>Это будет использовано <b>автоматической документацией</b>.</p>
+                    </li>
+                    <li>
+                        <p>Это также будет использовано инструментами автоматической генерации клиентского кода.</p>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+        <p>Но самое главное:</p>
+        <ul>
+            <li>
+                <p>Выходные данные будут <b>ограничены и отфильтрованы</b> в соответствии с тем, что определено
+                в возвращаемом типе.</p>
+                <ul>
+                    <li>
+                        <p>Это особенно важно для <b>безопасности</b>, ниже мы рассмотрим это подробнее.</p>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+
+        <h2>Параметр <code>response_model</code></h2>
+        <p>Бывают случаи, когда вам нужно или хочется возвращать данные, которые не в точности соответствуют
+        объявленному типу.</p>
+        <p>Например, вы можете хотеть <b>возвращать словарь (dict)</b> или объект из базы данных, но
+        <b>объявить его как Pydantic-модель</b>. Тогда Pydantic-модель выполнит документирование данных, валидацию
+        и т.п. для объекта, который вы вернули (например, словаря или объекта из базы данных).</p>
+        <p>Если вы добавите аннотацию возвращаемого типа, инструменты и редакторы кода начнут жаловаться (и будут правы),
+        что функция возвращает тип (например, dict), отличные от объявленного (например, Pydantic-модель).</p>
+        <p>В таких случаях вместо аннотации возвращаемого типа можно использовать параметр <code>response_model</code>
+        у <i>декоратора операции пути</i>.</p>
+        <p>Параметр <code>response_model</code> можно указать у любой <i>операции пути</i>:</p>
+        <ul>
+            <li>
+                <p><code>@app.get()</code></p>
+            </li>
+            <li>
+                <p><code>@app.post()</code></p>
+            </li>
+            <li>
+                <p><code>@app.put()</code></p>
+            </li>
+            <li>
+                <p><code>@app.delete()</code></p>
+            </li>
+            <li>
+                <p>и т.д.</p>
+            </li>
+        </ul>
+<pre data-line="30, 35, 37-40" class="line-numbers"><code class="language-python">from typing import Any
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8080",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class Item(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+    tags: list[str] = []
+
+
+@app.post("/items/with_response_model", response_model=Item)
+async def create_item(item: Item) -> Any:
+    return item
+
+
+@app.get("/items/with_response_model", response_model=list[Item])
+async def read_items() -> Any:
+    return [
+        {"name": "Portal Gun", "price": 42.0},
+        {"name": "Plumbus", "price": 32.0},
+    ]</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">name:</label>
+            <label slot="labels">description:</label>
+            <label slot="labels">price:</label>
+            <label slot="labels">tax:</label>
+            <label slot="labels">tags:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/with_response_model">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="name" value="Foo">
+            <input slot="inputs" type="text" name="description" value="The pretender">
+            <input slot="inputs" type="text" name="price" value="42.0">
+            <input slot="inputs" type="text" name="tax" value="3.2">
+            <input slot="inputs" type="text" name="tags" value='["rock", "metal", "bar"]'>
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/with_response_model">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <div class="admonition note">
+            <h3>Примечание</h3>
+            <p>Обратите внимание, что <code>response_model</code> - это параметр метода «декоратора» (<code>get</code>,
+            <code>post</code> и т.д.), а не вашей <i>функции-обработчика пути</i>, в которой указываются параметры
+            и тело запроса.</p>
+        </div>
+        <p><code>response_model</code> принимает тот же тип, что вы бы объявили для поля Pydantic-модели, то есть
+        это может быть одна Pydantic-модель, а может быть, например, <code>list</code> Pydantic-моделей,
+        как <code>list[item]</code>.</p>
+        <p>FastAPI будет использовать <code>response_model</code> для документации, валидации и т.п., а также для
+        <b>конвертации и фильтрации выходных данных</b> к объявленному типу.</p>
+        <div class="admonition tip">
+            <h3>Совет</h3>
+            <p>Если у вас в редакторе кода, mypy и т.п. включены строгие проверки типов, вы можете объявить возвращаемый
+            тип функции как <code>Any</code>.</p>
+            <p>Так вы сообщите редактору, что намеренно возвращаете что угодно. Но FastAPI все равно выполнит документацию
+            данных, валидацию, фильтрацию и т.д. с помощью <code>response_model</code>.</p>
+        </div>
+
+        <h3>Приоритет <code>response_model</code></h3>
+        <p>Если вы объявите и возвращаемый тип, и <code>response_model</code>, приоритет будет у <code>response_model</code>,
+        именно его использует FastAPI.</p>
+        <p>Так вы можете добавить корректные аннотации типов к своим функциям, даже если фактически возвращаете тип,
+        отличный от модели ответа, чтобы ими пользовались редактор и инструменты вроде mypy. И при этом FastAPI
+        продолжит выполнять валидацию данных, документацию и т.д. с использованием <code>response_model</code>.</p>
+        <p>Вы также можете указать <code>response_model=None</code>, чтобы отключить создание модели ответа для
+        данной <i>операции пути</i>. Это может понадобиться, если вы добавляете аннотации типов для вещей,
+        не являющихся валидными полями Pydantic. Пример вы увидите ниже.</p>
+
+        <h2>Вернуть те же входные данные</h2>
+        <p>Здесь мы объявляем модель <code>UserIn</code>, она будет содержать пароль в открытом виде:</p>
+<pre data-line="20, 22" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, EmailStr
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8080",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class UserIn(BaseModel):
+    username: str
+    password: str
+    email: EmailStr
+    full_name: str | None = None
+
+
+@app.post("/user/in")
+async def create_user(user: UserIn) -> UserIn:
+    return user</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">username:</label>
+            <label slot="labels">password:</label>
+            <label slot="labels">email:</label>
+            <label slot="labels">full_name:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/user/in">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="username" value="user">
+            <input slot="inputs" type="password" name="password" value="qwerty">
+            <input slot="inputs" type="email" name="email" value="user@gmail.com">
+            <input slot="inputs" type="text" name="full_name" value="Иванов Иван Иванович">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <div class="admonition info">
+            <h3>Информация</h3>
+            <p>Чтобы использовать <code>EmailStr</code>, сначала установите
+            <a target="_blank" href="https://github.com/JoshData/python-email-validator">email-validator</a>.</p>
+            <p>Создайте <a target="_blank" href="https://fastapi.tiangolo.com/ru/virtual-environments/">виртуальное окружение</a>,
+            активируйте его и затем установите пакет, например:</p>
+            <pre><code class="language-bash">$ pip install email-validator</code></pre>
+            <p>Или так:</p>
+            <pre><code class="language-bash">$ pip install "pydantic[email]"</code></pre>
+        </div>
+        <p>И мы используем эту модель для объявления вводных данных, и ту же модель - для объявления выходных данных:</p>
+<pre data-line="28" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, EmailStr
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8080",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class UserIn(BaseModel):
+    username: str
+    password: str
+    email: EmailStr
+    full_name: str | None = None
+
+
+@app.post("/user/in")
+async def create_user(user: UserIn) -> UserIn:
+    return user</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">username:</label>
+            <label slot="labels">password:</label>
+            <label slot="labels">email:</label>
+            <label slot="labels">full_name:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/user/in">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="username" value="user">
+            <input slot="inputs" type="password" name="password" value="qwerty">
+            <input slot="inputs" type="email" name="email" value="user@gmail.com">
+            <input slot="inputs" type="text" name="full_name" value="Иванов Иван Иванович">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Теперь, когда браузер создает пользователя с паролем, API вернет тот же пароль в ответе.</p>
+        <p>В этом случае это может быть не проблемой, так как пароль отправляет тот же пользователь.</p>
+        <p>Но если мы используем ту же модель в другой <i>операции пути</i>, мы можем начать отправлять пароли
+        пользователей каждому клиенту.</p>
+        <div class="admonition danger">
+            <h3>Осторожно</h3>
+            <p>Никогда не храните пароль пользователя в открытом виде и не отправляйте его в ответе подобным
+            образом, если только вы не понимаете всех рисков и точно знаете, что делаете.</p>
+        </div>
+
+        <h2>Добавить модель для ответа</h2>
+        <p>Вместо этого вы можете создать входную модель с паролем в открытом виде и выходную модель без него:</p>
+<pre data-line="22, 24, 29" class="line-numbers"><code class="language-python">from typing import Any
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, EmailStr
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8080",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class UserIn(BaseModel):
+    username: str
+    password: str
+    email: EmailStr
+    full_name: str | None = None
+
+
+class UserOut(BaseModel):
+    username: str
+    email: EmailStr
+    full_name: str | None = None
+
+
+@app.post("/user/out", response_model=UserOut)
+async def create_user(user: UserIn) -> Any:
+    return user</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">username:</label>
+            <label slot="labels">password:</label>
+            <label slot="labels">email:</label>
+            <label slot="labels">full_name:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/user/out">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="username" value="user">
+            <input slot="inputs" type="password" name="password" value="qwerty">
+            <input slot="inputs" type="email" name="email" value="user@gmail.com">
+            <input slot="inputs" type="text" name="full_name" value="Иванов Иван Иванович">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Здесь, хотя <i>функция-обработчик пути</i> возвращает тот же входной объект пользователя, содержащий пароль:</p>
+<pre data-line="37" class="line-numbers"><code class="language-python">from typing import Any
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, EmailStr
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8080",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class UserIn(BaseModel):
+    username: str
+    password: str
+    email: EmailStr
+    full_name: str | None = None
+
+
+class UserOut(BaseModel):
+    username: str
+    email: EmailStr
+    full_name: str | None = None
+
+
+@app.post("/user/out", response_model=UserOut)
+async def create_user(user: UserIn) -> Any:
+    return user</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">username:</label>
+            <label slot="labels">password:</label>
+            <label slot="labels">email:</label>
+            <label slot="labels">full_name:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/user/out">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="username" value="user">
+            <input slot="inputs" type="password" name="password" value="qwerty">
+            <input slot="inputs" type="email" name="email" value="user@gmail.com">
+            <input slot="inputs" type="text" name="full_name" value="Иванов Иван Иванович">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>... Мы объявили <code>response_model</code> как модель <code>UserOut</code>, в которой нет пароля:</p>
+<pre data-line="35" class="line-numbers"><code class="language-python">from typing import Any
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, EmailStr
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8080",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class UserIn(BaseModel):
+    username: str
+    password: str
+    email: EmailStr
+    full_name: str | None = None
+
+
+class UserOut(BaseModel):
+    username: str
+    email: EmailStr
+    full_name: str | None = None
+
+
+@app.post("/user/out", response_model=UserOut)
+async def create_user(user: UserIn) -> Any:
+    return user</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">username:</label>
+            <label slot="labels">password:</label>
+            <label slot="labels">email:</label>
+            <label slot="labels">full_name:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/user/out">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="username" value="user">
+            <input slot="inputs" type="password" name="password" value="qwerty">
+            <input slot="inputs" type="email" name="email" value="user@gmail.com">
+            <input slot="inputs" type="text" name="full_name" value="Иванов Иван Иванович">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Таким образом, <b>FastAPI</b> позаботится о том, чтобы отфильтровать все данные, не объявленные в выходной
+        модели (используя Pydantic).</p>
+
+        <h3><code>response_model</code> или возвращаемый тип</h3>
+        <p>В этом случае, поскольку две модели различаются, если бы мы аннотировали возвращаемый тип функции как
+        <code>UserOut</code>, редактор и инструменты пожаловались бы, что мы возвращаем неверный тип, так как это
+        разные классы.</p>
+        <p>Поэтому в этом примере мы должны объявить тип ответа в параметре <code>response_model</code>.</p>
+        <p>... Но читайте дальше, чтобы узнать, как это обойти.</p>
+
+        <h2>Возвращаемый тип и фильтрация данных</h2>
+        <p>Продолжим предыдущий пример. Мы хотели <b>аннотировать функцию одним типом</b>, но при этом иметь возможность
+        вернуть из функции что-то, что фактически включает <b>больше данных</b>.</p>
+        <p>Мы хотим, чтобы FastAPI продолжал <b>фильтровать</b> данные с помощью модели ответа. Так что, даже если
+        функция возвращает больше данных, в ответ будут включены только поля, объявленные в модели ответа.</p>
+        <p>В предыдущем примере, поскольку классы были разными, нам пришлось использовать параметр
+        <code>response_model</code>. Но это также означает, что мы теряем поддержку от редактора и инструментов,
+        проверяющих возвращаемый тип функции.</p>
+        <p>Однако в большинстве таких случаев нам нужно лишь <b>отфильтровать/убрать</b> некоторые данные,
+        как в этом примере.</p>
+        <p>И в этих случаях мы можем использовать классы и наследование, чтобы воспользоваться <b>аннотацией типов</b>
+        функций для лучшей поддержки в редакторе и инструментах и при этом получить <b>фильтрацию данных</b> от
+        FastAPI.</p>
+<pre data-line="35" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, EmailStr
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8080",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class BaseUser(BaseModel):
+    username: str
+    email: EmailStr
+    full_name: str | None = None
+
+
+class BaseUserIn(BaseUser):
+    password: str
+
+
+@app.post("/user")
+async def create_user(user: BaseUserIn) -> BaseUser:
+    return user</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">username:</label>
+            <label slot="labels">password:</label>
+            <label slot="labels">email:</label>
+            <label slot="labels">full_name:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/user">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="username" value="user">
+            <input slot="inputs" type="password" name="password" value="qwerty">
+            <input slot="inputs" type="email" name="email" value="user@gmail.com">
+            <input slot="inputs" type="text" name="full_name" value="Иванов Иван Иванович">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Так мы получаем поддержку инструментов (редакторы, mypy) - код корректен с точки зрения типов - и одновременно
+        получаем фильтрацию данных от FastAPI.</p>
+        <p>Как это работает? Давайте разберемся.</p>
+
+        <h3>Аннотации типов и инструменты</h3>
+        <p>Сначала посмотрим, как это увидят редакторы, mypy и другие инструменты.</p>
+        <p><code>BaseUser</code> содержит базовые поля. Затем <code>BaseUserIn</code> наследуется от <code>BaseUser</code>
+        и добавляет поле <code>password</code>, то есть он включает все поля обеих моделей.</p>
+        <p>Мы аннотируем возвращаемый тип функции как <code>BaseUser</code>, но фактически возвращаем экземпляр
+        <code>BaseUserIn</code>.</p>
+        <p>Редактор, mypy и другие инструменты не будут возражать, потому что с точки зрения типов <code>BaseUserIn</code> -
+        подкласс <code>BaseUser</code>, что означает, что это <i>валидный</i> тип везде, где ожидается что-то,
+        являющееся <code>BaseUser</code>.</p>
+
+        <h3>Фильтрация данных FastAPI</h3>
+        <p>Теперь, для FastAPI: он увидит возвращаемый тип и убедится, что то, что вы возвращаете, включает <b>только</b>
+        поля, объединенные в этом типе.</p>
+        <p>FastAPI делает несколько вещей внутри вместе с Pydantic, чтобы гарантировать, что те же правила наследования
+        классов не используются для фильтрации возвращаемых данных, иначе вы могли бы вернуть гораздо больше данных,
+        чем ожидали.</p>
+        <p>Таким образом вы получаете лучшее из обоих миров: аннотации типов с <b>поддержкой инструментов</b>
+        и <b>фильтрацию данных</b>.</p>
+
+        <h2>Посмотреть в документации</h2>
+        <p>В автоматической документации вы увидите, что у входной и выходной моделей есть свои JSON Schema, и обе
+        модели используются в интерактивной документации API:
+        <a target="_blank" href="http://127.0.0.1:8000/docs">http://127.0.0.1:8000/docs</a>.</p>
+
+        <h2>Другие аннотации возвращаемых типов</h2>
+        <p>Бывают случаи, когда вы возвращаете что-то, что не является валидным полем Pydantic, и аннотируете это
+        в функции только ради поддержки инструментов (редактор, mypy и т.д.).</p>
+
+        <h3>Возврат Response напрямую</h3>
+<pre data-line="21, 23, 24" class="line-numbers"><code class="language-python">from fastapi import FastAPI, Response
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, RedirectResponse
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8080",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+@app.get("/portal")
+async def get_portal(teleport: bool = False) -> Response:
+    if teleport:
+        return RedirectResponse(url="http://127.0.0.1:8000/docs")
+    return JSONResponse(content={"message": "Here's your interdimensional portal."})</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/portal?teleport=false">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Этот простой случай обрабатывается FastAPI автоматически, потому что аннотация возвращаемого типа -
+        это класс (или подкласс) <code>Response</code>.</p>
+        <p>И инструменты тоже будут довольны, потому что и <code>RedirectResponse</code>, и <code>JSONResponse</code>
+        являются подклассами <code>Response</code>, так что аннотация типа корректна.</p>
+
+        <h3>Аннотировать подкласс Response</h3>
+        <p>Вы также можете использовать подкласс <code>Response</code> в аннотации типа:</p>
+<pre data-line="21, 22" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8080",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+@app.get("/teleport")
+async def get_teleport() -> RedirectResponse:
+        return RedirectResponse(url="http://127.0.0.1:8000/docs")</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/teleport">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Это тоже сработает, так как <code>RedirectResponse</code> - подкласс <code>Response</code>, и FastAPI
+        автоматически обработает этот случай.</p>
+
+        <h3>Некорректные аннотации возвращаемых типов</h3>
+        <p>Но когда вы возвращаете произвольный объект, не являющийся валидным типом Pydantic (например, объект
+        базы данных), и аннотируете его таким образом в функции, FastAPI попытается создать модель ответа Pydantic
+        из этой аннотации типа и потерпит неудачу.</p>
+        <p>То же произойдет, если у вас будет что-то вроде
+        <abbr title="Объединение нескольких типов означает «любой из этих типов»">union</abbr> разных типов, где один
+        или несколько не являются валидными типами Pydantic, например, это приведет к ошибке:</p>
+<pre data-line="21" class="line-numbers"><code class="language-python">from fastapi import FastAPI, Response
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8080",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+@app.get("/portal")
+async def get_portal(teleport: bool = False) -> Response | dict:
+    if teleport:
+        return RedirectResponse(url="http://127.0.0.1:8000/docs")
+    return {"message": "Here's your interdimensional portal."}</code></pre>
+        <p>Это не сработает, потому что аннотация типа не является типом Pydantic и это не единственный класс
+        <code>Response</code> и его подкласс, а объединение из <code>Response</code> и <code>dict</code>.</p>
+
+        <h3>Отключить модель ответа</h3>
+        <p>Продолжая пример выше, вы можете не хотеть использовать стандартную валидацию данных, документацию,
+        фильтрацию и т.д., выполняемые FastAPI.</p>
+        <p>Но при этом вы можете хотеть сохранить аннотацию возвращаемого типа в функции, чтобы пользоваться поддержкой
+        инструментов (редакторы, проверки типов вроде mypy).</p>
+        <p>В этом случае вы можете отключить генерацию модели ответа, установив <code>response_model=None</code>:</p>
+<pre data-line="20" class="line-numbers"><code class="language-python">from fastapi import FastAPI, Response
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8080",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+@app.get("/portal", response_model=None)
+async def get_portal(teleport: bool = False) -> Response | dict:
+    if teleport:
+        return RedirectResponse(url="http://127.0.0.1:8000/docs")
+    return {"message": "Here's your interdimensional portal."}</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/portal/response_model_none?teleport=false">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Так FastAPI пропустит генерацию модели ответа, и вы сможете использовать любые аннотации возвращаемых
+        типов, не влияя на ваше приложение FastAPI.</p>
+
+        <h2>Параметры кодирования модели ответа</h2>
+        <p>У вашей модели ответа могут быть значения по умолчанию, например:</p>
+<pre data-line="22, 24, 25" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8080",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class ItemWithDefaultTax(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float = 10.5
+    tags: list[str] = []
+
+
+items = {
+    "foo": {"name": "Foo", "price": 50.2},
+    "bar": {"name": "Bar", "description": "The bartenders", "price": 62, "tax": 20.2},
+    "baz": {"name": "Baz", "description": None, "price": 50.2, "tax": 10.5, "tags": []},
+}
+
+
+@app.get("/items/{item_id}", response_model=ItemWithDefaultTax, response_model_exclude_unset=True)
+async def read_item(item_id: str):
+    return items[item_id]</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/foo">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <ul>
+            <li>
+                <p><code>description: str | None = None</code> имеет значение по умолчанию <code>None</code>.</p>
+            </li>
+            <li>
+                <p><code>tax: float = 10.5</code> имеет значение по умолчанию <code>10.5</code>.</p>
+            </li>
+            <li>
+                <p><code>tags: list[str] = []</code> имеет значение по умолчанию <code>[]</code>.</p>
+            </li>
+        </ul>
+        <p>Но вы можете захотеть опустить их в результате, если они фактически не были сохранены.</p>
+        <p>Например, если у вас есть модели с множеством необязательных атрибутов в NoSQL-базе данных, но вы
+        не хотите отправлять очень длинные JSON-ответы, заполненные значениями по умолчанию.</p>
+
+        <h3>Используйте параметр <code>response_model_exclude_unset</code></h3>
+        <p>Вы можете установить у <i>декоратора операции пути</i> параметр <code>response_model_exclude_unset=True</code></p>
+<pre data-line="35" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8080",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class ItemWithDefaultTax(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float = 10.5
+    tags: list[str] = []
+
+
+items = {
+    "foo": {"name": "Foo", "price": 50.2},
+    "bar": {"name": "Bar", "description": "The bartenders", "price": 62, "tax": 20.2},
+    "baz": {"name": "Baz", "description": None, "price": 50.2, "tax": 10.5, "tags": []},
+}
+
+
+@app.get("/items/{item_id}", response_model=ItemWithDefaultTax, response_model_exclude_unset=True)
+async def read_item(item_id: str):
+    return items[item_id]</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/foo">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>И эти значения по умолчанию не будут включены в ответ - только те значения, которые действительно были
+        установлены.</p>
+        <p>Итак, если вы отправите запрос к этой <i>операции пути</i> для элемента с ID <code>foo</code>, ответ
+        (без значений по умолчанию) будет таким:</p>
+<pre><code class="language-json">{
+    "name": "Foo",
+    "price": 50.2
+}</code></pre>
+        <div class="admonition info">
+            <h3>Информация</h3>
+            <p>FastAPI использует метод <code>.model_dump()</code> у Pydantic-моделей с
+            <a target="_blank" href="https://docs.pydantic.dev/1.10/usage/exporting_models/#modeldict">параметром <code>exclude_unset</code></a>,
+            чтобы добиться такого поведения.</p>
+        </div>
+        <div class="admonition info">
+            <h3>Информация</h3>
+            <p>Вы также можете использовать:</p>
+            <ul>
+                <li>
+                    <p><code>response_model_exclude_defaults=True</code></p>
+                </li>
+                <li>
+                    <p><code>response_model_exclude_none=True</code></p>
+                </li>
+            </ul>
+            <p>Как описано в
+            <a target="_blank" href="https://docs.pydantic.dev/1.10/usage/exporting_models/#modeldict">документации Pydantic</a> для
+            <code>exclude_defaults</code> и <code>exclude_none</code>.</p>
+        </div>
+
+        <h3>Данные со значениями для полей, имеющих значения по умолчанию</h3>
+        <p>Но если в наших данных есть значения для полей модели, для которых указаны значения по умолчанию,
+        как у элемента с ID <code>bar</code>:</p>
+<pre><code class="language-json">{
+    "name": "Bar",
+    "description": "The bartenders",
+    "price": 62,
+    "tax": 20.2
+}</code></pre>
+        <p>Они будут включены в ответ.</p>
+
+        <h3>Данные с такими же значениями, как значения по умолчанию</h3>
+        <p>Если данные имеют те же значения, что и значения по умолчанию, как у элемента с ID <code>baz</code>:</p>
+<pre><code class="language-json">{
+    "name": "Baz",
+    "description": None,
+    "price": 50.2,
+    "tax": 10.5,
+    "tags": []
+}</code></pre>
+        <p>FastAPI достаточно умен (на самом деле, это Pydantic), чтобы понять, что хотя <code>description</code>,
+        <code>tax</code> и <code>tags</code> совпадают со значениями по умолчанию, они были установлены явно
+        (а не взяты из значений пол умолчанию).</p>
+        <p>Поэтому они тоже будут включены в JSON-ответ.</p>
+        <div class="admonition tip">
+            <h3>Совет</h3>
+            <p>Обратите внимание, что значения по умолчанию могут быть любыми, не только <code>None</code>.</p>
+            <p>Это может быть список (<code>[]</code>), число с плавающей точкой <code>10.5</code> и т.д.</p>
+        </div>
+
+        <h2><code>response_model_include</code> и <code>response_model_exclude</code></h2>
+        <p>Вы также можете использовать параметры <i>декоратора операции пути</i> <code>response_model_include</code>
+        и <code>response_model_exclude</code>.</p>
+        <p>Они принимают <code>set</code> из <code>str</code> с именами атрибутов, которые нужно включить (исключив
+        остальные) или исключить (оставив остальные).</p>
+        <p>Это можно использовать как быстрый способ, если у вас только одна Pydantic-модель и вы хотите убрать
+        часть данных из ответа.</p>
+
+        <div class="admonition tip">
+            <h3>Совет</h3>
+            <p>Но все же рекомендуется использовать подходы выше - несколько классов - вместо этих параметров.</p>
+            <p>Потому что JSON Schema, генерируемая в OpenAPI вашего приложения (и документации), все равно будет
+            соответствовать полной модели, даже если вы используете <code>response_model_include</code> или
+            <code>response_model_exclude</code>, чтобы опустить некоторые атрибуты.</p>
+            <p>То же относится к <code>response_model_by_alias</code>, которые работает аналогично.</p>
+        </div>
+<pre data-line="39, 44" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8080",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class ItemWithoutTags(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float = 10.5
+
+
+items_without_tags = {
+    "foo": {"name": "Foo", "price": 50.2},
+    "bar": {"name": "Bar", "description": "The Bar fighters", "price": 62, "tax": 20.2},
+    "baz": {
+        "name": "Baz",
+        "description": "There goes my baz",
+        "price": 50.2,
+        "tax": 10.5,
+    },
+}
+
+
+@app.get("/items/{item_id}/name", response_model=ItemWithoutTags, response_model_include={"name", "description"})
+async def read_item_name(item_id: str):
+    return items_without_tags[item_id]
+
+
+@app.get("/items/{item_id}/public", response_model=ItemWithoutTags, response_model_exclude={"tax"})
+async def read_item_public_data(item_id: str):
+    return items_without_tags[item_id]</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/foo/name">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/foo/public">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <div class="admonition tip">
+            <h3>Совет</h3>
+            <p>Синтаксис <code>{"name", "description"}</code> создает <code>set</code> c этими двумя значениями.</p>
+            <p>Это эквивалентно <code>set(["name", "description"])</code>.</p>
+        </div>
+
+        <h3>Использование <code>list</code> вместо <code>set</code></h3>
+        <p>Если вы забыли использовать <code>set</code> и применили <code>list</code> или <code>tuple</code>, FastAPI
+        все равно преобразует его в <code>set</code>, и все будет работать корректно:</p>
+<pre data-line="39, 44" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8080",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class ItemWithoutTags(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float = 10.5
+
+
+items_without_tags = {
+    "foo": {"name": "Foo", "price": 50.2},
+    "bar": {"name": "Bar", "description": "The Bar fighters", "price": 62, "tax": 20.2},
+    "baz": {
+        "name": "Baz",
+        "description": "There goes my baz",
+        "price": 50.2,
+        "tax": 10.5,
+    },
+}
+
+
+@app.get("/items/{item_id}/name", response_model=ItemWithoutTags, response_model_include=["name", "description"])
+async def read_item_name(item_id: str):
+    return items_without_tags[item_id]
+
+
+@app.get("/items/{item_id}/public", response_model=ItemWithoutTags, response_model_exclude=["tax"])
+async def read_item_public_data(item_id: str):
+    return items_without_tags[item_id]</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/foo/name">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/foo/public">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h2>Резюме</h2>
+        <p>Используйте параметр <code>response_model</code> у <i>декоратора операции пути</i>, чтобы задавать модели
+        ответа, и особенно - чтобы приватные данные отфильтровывались.</p>
+        <p>Используйте <code>response_model_exclude_unset</code>, чтобы возвращать только те значения, которые были
+        установлены явно.</p>
+    </article>
+</body>
+</html>

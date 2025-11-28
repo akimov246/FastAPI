@@ -88,8 +88,18 @@ div.admonition.warning {
     border: 0.1rem solid #ff9100;
 }
 
+div.admonition.danger {
+    border: 0.1rem solid #ff1744;
+}
+
 div.admonition p {
     padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+div.admonition pre {
+    margin-left: 1rem;
+    margin-right: 1rem;
 }
 
 div.admonition h3:first-of-type {
@@ -135,6 +145,14 @@ div.admonition.warning h3:first-of-type {
 
 div.admonition.warning h3:first-of-type::before {
     content: '⚠️';
+}
+
+div.admonition.danger h3:first-of-type {
+    background: #ff17441a;
+}
+
+div.admonition.danger h3:first-of-type::before {
+    content: '⚡';
 }
 
 abbr {

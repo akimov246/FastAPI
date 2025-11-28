@@ -79,6 +79,7 @@ customElements.define('request-response-container', class extends HTMLElement {
                     border-radius: 0.5rem;
                     padding: 0.5rem;
                     gap: 0;
+                    margin-bottom: 0.5rem;
                 }
               
                 form {
@@ -244,6 +245,10 @@ customElements.define('request-response-container', class extends HTMLElement {
             }
             fetch(url, requestInit)
             .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                    return `Redirected to ${response.url}`;
+                }
                 return response.json();
             })
             .then(json => {
