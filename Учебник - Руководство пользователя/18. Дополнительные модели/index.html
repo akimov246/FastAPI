@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Дополнительные модели</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Дополнительные модели</h1>
+        <p>В продолжение прошлого примера будет уже обычным делом иметь несколько связанных между собой моделей.</p>
+        <p>Это особенно применимо в случае моделей пользователя, потому что:</p>
+        <ul>
+            <li>
+                <p><b>Модель для ввода</b> должна иметь возможность содержать пароль.</p>
+            </li>
+            <li>
+                <p><b>Модель для вывода</b> не должна содержать пароль.</p>
+            </li>
+            <li>
+                <p><b>Модель для базы данных</b>, возможно, должна содержать хэшированный пароль.</p>
+            </li>
+        </ul>
+        <div class="admonition danger">
+            <h3>Внимание</h3>
+            <p>Никогда не храните пароли пользователей в чистом виде. Всегда храните «безопасный хэш», которвый вы
+            затем сможете проверить.</p>
+            <p>Если вам это не знакомо, вы можете узнать про «хэш пароля» в
+            <a target="_blank" href="https://fastapi.tiangolo.com/ru/tutorial/security/simple-oauth2/#password-hashing">главах о безопасности</a>.</p>
+        </div>
+
+        <h2>Множественные модели</h2>
+        <p>Ниже изложена основная идея того, как могут выглядеть эти модели с полями для паролей, а также описаны места,
+        где они используются:</p>
+<pre data-line="20, 22, 27, 33, 35, 40-41, 44-46, 51-52" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, EmailStr
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class UserIn(BaseModel):
+    username: str
+    password: str
+    email: EmailStr
+    full_name: str | None = None
+
+
+class UserOut(BaseModel):
+    username: str
+    email: EmailStr
+    full_name: str | None = None
+
+
+class UserInDB(BaseModel):
+    username: str
+    hashed_password: str
+    email: EmailStr
+    full_name: str | None = None
+
+
+def fake_password_hasher(raw_password: str):
+    return "supersecret" + raw_password
+
+
+def fake_save_user(user_in: UserIn):
+    hashed_password = fake_password_hasher(user_in.password)
+    user_in_db = UserInDB(**user_in.model_dump(), hashed_password=hashed_password)
+    print("User saved! ...not really")
+    return user_in_db
+
+
+@app.post("/user", response_model=UserOut)
+async def create_user(user_in: UserIn):
+    user_saved = fake_save_user(user_in)
+    return user_saved</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">username:</label>
+            <label slot="labels">password:</label>
+            <label slot="labels">email:</label>
+            <label slot="labels">full_name:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/user">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="username" value="user">
+            <input slot="inputs" type="password" name="password" value="qwerty">
+            <input slot="inputs" type="email" name="email" value="user@gmail.com">
+            <input slot="inputs" type="text" name="full_name" value="Иванов Иван Иванович">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-python"></pre>
+        </request-response-container>
+
+        <h3>Про <code>**user_in.model_dump()</code></h3>
+        <h4>.model_dump() из Pydantic</h4>
+        <p><code>user_in</code> - это Pydantic-модель класса <code>UserIn</code>.</p>
+        <p>У Pydantic-моделей есть метод <code>model_dump()</code>, который возвращает <code>dict</code> с данными
+        модели.</p>
+        <p>Поэтому, если мы создадим Pydantic-объект <code>user_in</code> таким способом:</p>
+<pre><code class="language-python">user_in = UserIn(username="john", password="secret", email="john.doe@example.com")</code></pre>
+        <p>и затем вызовем:</p>
+<pre><code class="language-python">user_dict = user_in.model_dump()</code></pre>
+        <p>то теперь у нас есть <code>dict</code> с данными модели в переменной <code>user_dict</code> (это <code>dict</code>
+        вместо объекта Pydantic-модели).</p>
+        <p>И если мы вызовем:</p>
+<pre><code class="language-python">print(user_dict)</code></pre>
+        <p>мы можем получить <code>dict</code> с такими данными:</p>
+<pre><code class="language-python">{
+    'username': 'john',
+    'password': 'secret',
+    'email': 'john.doe@example.com',
+    'full_name': None
+}</code></pre>
+        <h4>Распаковка <code>dict</code></h4>
+        <p>Если мы возьмем <code>dict</code> наподобие <code>user_dict</code> и передадим его в функцию (или класс),
+        используя <code>**user_dict</code>, Python распакует его. Он передаст ключи и значения <code>user_dict</code>
+        напрямую как аргументы типа ключ-значение.</p>
+        <p>Поэтому, продолжая описанный выше пример с <code>user_dict</code>, написание такого кода:</p>
+<pre><code class="language-python">UserInDB(**user_dict)</code></pre>
+        <p>Будет работать так же, как примерно такой код:</p>
+<pre><code class="language-python">UserInDB(
+    username="john",
+    password="secret",
+    email="john.doe@example.com",
+    full_name=None
+)</code></pre>
+        <p>Или, если для больше точности мы напрямую используем <code>user_dict</code> с любым потенциальным содержимым,
+        то этот пример будет выглядеть так:</p>
+<pre><code class="language-python">UserInDB(
+    username=user_dict["username"],
+    password=user_dict["password"],
+    email=user_dict["email"],
+    full_name=user_dict["full_name"]
+)</code></pre>
+
+        <h4>Pydantic-модель из содержимого другой модели</h4>
+        <p>Как в примере выше мы получили <code>user_dict</code> из <code>user_in.model_dump()</code>, этот код:</p>
+<pre><code class="language-python">user_dict = user_in.model_dump()
+UserInDB(**user_dict)</code></pre>
+        <p>будет равнозначен такому:</p>
+<pre><code class="language-python">UserInDB(**user_in.model_dump())</code></pre>
+        <p>... Потому что <code>user_in.model_dump()</code> - это <code>dict</code>, и затем мы указываем, чтобы Python
+        его «распаковал», когда передаем его в <code>UserInDB</code> и ставим перед ним <code>**</code>.</p>
+        <p>Таким образом мы получаем Pydantic-модель на основе данных из другой Pydantic-модели.</p>
+
+        <h4>Распаковка <code>dict</code> и дополнительные именованные аргументы</h4>
+        <p>И затем, если мы добавим дополнительный именованный аргумент <code>hashed_password=hashed_password</code>
+        как здесь:</p>
+<pre><code class="language-python">UserInDB(**user_in.model_dump(), hashed_password=hashed_password)</code></pre>
+        <p>... То мы получим что-то подобное:</p>
+<pre><code class="language-python">UserInDB(
+    username=user_dict["username"],
+    password=user_dict["password"],
+    email=user_dict["email"],
+    full_name=user_dict["full_name"],
+    hashed_password = hashed_password
+)</code></pre>
+        <div class="admonition warning">
+            <h3>Предупреждение</h3>
+            <p>Вспомогательные функции <code>fake_password_hasher</code> и <code>fake_save_user</code> используются
+            только для демонстрации возможного потока данных и, конечно, не обеспечивают настоящую безопасность.</p>
+        </div>
+
+        <h2>Сократите дублирование</h2>
+        <p>Сокращение дублирования кода - это одна из главных идей <b>FastAPI</b>.</p>
+        <p>Поскольку дублирование кода повышает риск появления багов, проблем с безопасностью, проблем десинхронизации
+        кода (когда вы обновляете код в одном месте, но не обновляете в другом), и т.д.</p>
+        <p>А все описанные выше модели используют много общих данных и дублируют названия атрибутов и типов.</p>
+        <p>Мы можем это улучшить.</p>
+        <p>Мы можем определить модель <code>UserBase</code>, которая будет базовой для остальных моделей.
+        И затем мы можем создать подклассы этой модели, которые будут наследовать ее атрибуты (объявления типов,
+        валидацию, и т.п.).</p>
+        <p>Все операции конвертации, валидации, документации и т.п. будут по-прежнему работать нормально.</p>
+        <p>В этом случае мы можем определить только различия между моделями (с <code>password</code> в чистом виде,
+        с <code>hashed_password</code> и без пароля):</p>
+<pre data-line="20, 26-27, 30-31, 33-34" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, EmailStr
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class UserBase(BaseModel):
+    username: str
+    email: EmailStr
+    full_name: str | None = None
+
+
+class UserIn(UserBase):
+    password: str
+
+
+class UserOut(UserBase):
+    pass
+
+class UserInDB(UserBase):
+    hashed_password: str
+
+
+def fake_password_hasher(raw_password: str):
+    return "supersecret" + raw_password
+
+
+def fake_save_user(user_in: UserIn):
+    hashed_password = fake_password_hasher(user_in.password)
+    user_in_db = UserInDB(**user_in.model_dump(), hashed_password=hashed_password)
+    print("User saved! ...not really")
+    return user_in_db
+
+
+@app.post("/user", response_model=UserOut)
+async def create_user(user_in: UserIn):
+    user_saved = fake_save_user(user_in)
+    return user_saved</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">username:</label>
+            <label slot="labels">password:</label>
+            <label slot="labels">email:</label>
+            <label slot="labels">full_name:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/user">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="username" value="user">
+            <input slot="inputs" type="password" name="password" value="qwerty">
+            <input slot="inputs" type="email" name="email" value="user@gmail.com">
+            <input slot="inputs" type="text" name="full_name" value="Иванов Иван Иванович">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-python"></pre>
+        </request-response-container>
+
+        <h2><code>Union</code> или <code>anyOf</code></h2>
+        <p>Вы можете определить ответ как <code>Union</code> из двух или более типов. Это означает, что ответ
+        должен соответствовать одному из них.</p>
+        <p>Он будет определен в OpenAPI как <code>anyOf</code>.</p>
+        <p>Для этого используйте стандартную аннотацию типов в Python
+        <a target="_blank" href="https://docs.python.org/3/library/typing.html#typing.Union">typing.Union</a>:</p>
+        <div class="admonition note">
+            <h3>Примечание</h3>
+            <p>При объявлении <a target="_blank" href="https://docs.pydantic.dev/latest/concepts/types/#unions">Union</a>,
+            сначала указывайте наиболее детальные типы, затем менее детальные. В примере ниже более детальный
+            <code>PlaneItem</code> стоит перед <code>CarItem</code> в <code>Union[PlaneItem, CarItem]</code>.</p>
+        </div>
+<pre data-line="1, 27-28, 31-33, 46" class="line-numbers"><code class="language-python">from typing import Union
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class BaseItem(BaseModel):
+    description: str
+    type: str
+
+
+class CarItem(BaseItem):
+    type: str = "car"
+
+
+class PlaneItem(BaseItem):
+    type: str = "plane"
+    size: int
+
+
+items = {
+    "item1": {"description": "All my friends drive a low rider", "type": "car"},
+    "item2": {
+        "description": "Music is my aeroplane, it's my aeroplane",
+        "type": "plane",
+        "size": 5,
+    },
+}
+
+
+@app.get("/items/{item_id}", response_model=Union[PlaneItem, CarItem])
+async def read_item(item_id: str):
+    return items[item_id]</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/item1">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-python"></pre>
+        </request-response-container>
+
+        <h3><code>Union</code> в Python3.10</h3>
+        <p>В этом примере мы передаем <code>Union[PlaneItem, CarItem]</code> в качестве значения аргумента
+        <code>response_model</code>.</p>
+        <p>Поскольку мы передаем его как <b>значение аргумента</b> вместо того, чтобы поместить его в <b>аннотацию типа</b>,
+        нам придется использовать <code>Union</code> даже в Python3.10.</p>
+        <p>Если оно было бы указано в аннотации типа, то мы могли бы использовать вертикальную черту как в примере:</p>
+<pre><code class="language-python">some_variable: PlaneItem | CatItem</code></pre>
+        <p>Но если мы помещаем его в <code>response_model=PlaneItem | CarItem</code> мы получим ошибку, потому что
+        Python попытается произвести <b>некоторую операцию</b> между <code>PlaneItem</code> и <code>CarItem</code>
+        вместо того, чтобы интерпретировать это как аннотацию типа.</p>
+
+        <h2>Список моделей</h2>
+        <p>Таким же образом вы можете определять ответы как списки объектов.</p>
+<pre data-line="31" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class Item(BaseModel):
+    name: str
+    description: str
+
+
+items = [
+    {"name": "Foo", "description": "There comes my hero"},
+    {"name": "Red", "description": "It's my aeroplane"},
+]
+
+
+@app.get("/items", response_model=list[Item])
+async def read_items():
+    return items</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-python"></pre>
+        </request-response-container>
+
+        <h2>Ответ с произвольным <code>dict</code></h2>
+        <p>Вы также можете определить ответ, используя произвольный одноуровневый <code>dict</code> и определяя только
+        типы ключей и значений без использования Pydantic-моделей.</p>
+        <p>Это полезно, если вы заранее не знаете корректных названий полей/атрибутов (которые будут нужны при
+        использовании Pydantic-модели).</p>
+<pre data-line="19" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+@app.get("/keyword-weights", response_model=dict[str, float])
+async def read_keyword_weights():
+    return {"foo": 2.3, "bar": 3.4}</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/keyword-weights">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-python"></pre>
+        </request-response-container>
+
+        <h2>Резюме</h2>
+        <p>Используйте несколько Pydantic-моделей и свободно применяйте наследование для каждой из них.</p>
+        <p>Вам не обязательно иметь единственную модель данных для каждой сущности, если эта сущность должна иметь
+        возможность быть в разных «состояниях». Как в случае с «сущностью» пользователя, у которого есть состояния
+        с полями <code>password</code>, <code>hashed_password</code> и без пароля.</p>
+    </article>
+</body>
+</html>
