@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Статус-код ответа</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Статус-код ответа</h1>
+        <p>Подобно тому, как вы можете задать модель/схему ответа, вы можете объявить HTTP статус-код, используемый
+        для ответа, с помощью параметра <code>status_code</code> в любой из <i>операции пути</i>:</p>
+        <ul>
+            <li>
+                <p><code>@app.get()</code></p>
+            </li>
+            <li>
+                <p><code>@app.post()</code></p>
+            </li>
+            <li>
+                <p><code>@app.put()</code></p>
+            </li>
+            <li>
+                <p><code>@app.delete()</code></p>
+            </li>
+            <li>
+                <p>и других.</p>
+            </li>
+        </ul>
+<pre data-line="19" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+@app.post("/items", status_code=201)
+async def create_item(name: str):
+    return {"name": name}</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items?name=foo">
+            <input slot="inputs" type="text" name="method" value="POST">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <div class="admonition note">
+            <h3>Примечание</h3>
+            <p>Обратите внимание, что <code>status_code</code> - это параметр метода-декоратора (<code>get</code>,
+            <code>post</code> и т.д.), а не внешней <i>функции-обработчика пути</i>, в отличие от остальных
+            параметров и тела запроса.</p>
+        </div>
+        <p>Параметр <code>status_code</code> принимает число, обозначающее HTTP статус-код.</p>
+        <div class="admonition info">
+            <h3>Информация</h3>
+            <p>В качестве значения параметра <code>status_code</code> также может использовать <code>IntEnum</code>,
+            например, из библиотеки
+            <a target="_blank" href="https://docs.python.org/3/library/http.html#http.HTTPStatus">http.HTTPStatus</a>
+            в Python.</p>
+        </div>
+        <p>Это позволит:</p>
+        <ul>
+            <li>
+                <p>Возвращать указанный код статуса в ответе.</p>
+            </li>
+            <li>
+                <p>Документировать его как код статуса ответа в openAPI схеме (а значит, и в пользовательских
+                интерфейсах): <a target="_blank" href="http://127.0.0.1:8000/docs">http://127.0.0.1:8000/docs</a>.</p>
+            </li>
+        </ul>
+        <div class="admonition note">
+            <h3>Примечание</h3>
+            <p>Некоторые кода статуса ответа указывают на то, что ответ не имеет тела.</p>
+            <p>FastAPI знает об этом и создаст документацию в OpenAPI, в которой будет указано, что тело ответа отсутствует.</p>
+        </div>
+
+        <h2>Об HTTP статус-кодах</h2>
+        <p>В протоколе HTTP числовой код состояния из 3 цифр отправляется как часть ответа.</p>
+        <p>У кодов статуса есть названия, чтобы упростить их распознавание, но важны именно числовые значения.</p>
+        <p>Кратко:</p>
+        <ul>
+            <li>
+                <p><code>100 - 199</code> - статус-коды информационного типа. Они редко используются разработчиками
+                напрямую. Ответы с этими кодами не могут иметь тела.</p>
+            </li>
+            <li>
+                <p><code><b>200 - 299</b></code> - статус-коды, сообщающие об успешной обработке запроса. Они
+                используются чаще всего.</p>
+                <ul>
+                    <li>
+                        <p><code>200</code> - это код статуса ответа по умолчанию, которые означает, что все прошло
+                        «OK».</p>
+                    </li>
+                    <li>
+                        <p>Другим примером может быть статус <code>201</code>, «Created». Он обычно используется
+                        после создания новой записи в базе данных.</p>
+                    </li>
+                    <li>
+                        <p>Особый случай - <code>204</code>, «No Content». Этот статус ответа используется, когда нет
+                        содержимого для возврата клиенту, и поэтому ответ не должен иметь тела.</p>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <p><code><b>300 - 399</b></code> - статус-коды, сообщающие о перенаправлениях. Ответы с этими кодами
+                статуса могут иметь или не иметь тело, за исключением ответов со статусом <code>304</code>,
+                «Not Modified», у которых не должно быть тела.</p>
+            </li>
+            <li>
+                <p><code><b>400 - 499</b></code> - статус-коды, сообщающие о клиентской ошибке. Это еще одна наиболее
+                часто используемая категория.</p>
+                <ul>
+                    <li>
+                        <p>Пример - код <code>404</code> для статуса «Not Found».</p>
+                    </li>
+                    <li>
+                        <p>Для общих ошибок со стороны клиента можно просто использовать код <code>400</code>.</p>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <p><code>500 - 599</code> - статус-коды, сообщающие о серверной ошибке. Они почти никогда не используются
+                разработчиками напрямую. Когда что-то идет не так в какой-то части кода вашего приложения или на сервере,
+                он автоматически вернет один из этих кодов статуса.</p>
+            </li>
+        </ul>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Чтобы узнать больше о HTTP кодах статуса и о том, для чего каждый из них предназначен, ознакомьтесь
+            с <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Status"><abbr title="Mozilla Developer Network - Сеть разработчиков Mozilla">MDN</abbr> документацией об HTTP статус-кодах</a>.</p>
+        </div>
+
+        <h2>Краткие обозначения для запоминания названий кодов</h2>
+        <p>Рассмотрим предыдущий пример еще раз:</p>
+<pre data-line="19" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+@app.post("/items", status_code=201)
+async def create_item(name: str):
+    return {"name": name}</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items?name=bar">
+            <input slot="inputs" type="text" name="method" value="POST">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p><code>201</code> - это код статуса «Создано».</p>
+        <p>Но вам не обязательно запоминать, что означает каждый из этих кодов.</p>
+        <p>Для удобства вы можете использовать переменные из <code>fastapi.status</code>.</p>
+<pre data-line="1, 18" class="line-numbers"><code class="language-python">from fastapi import FastAPI, status
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+@app.post("/items", status_code=status.HTTP_201_CREATED)
+async def create_item(name: str):
+    return {"name": name}</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items?name=baz">
+            <input slot="inputs" type="text" name="method" value="POST">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Они содержат те же числовые значения, но позволяют использовать автозавершение редактора кода для
+        выбора кода статуса.</p>
+        <div class="admonition note">
+            <h3>Технические детали</h3>
+            <p>Вы также можете использовать <code>from starlette import status</code> вместо
+            <code>from fastapi import status</code>.</p>
+            <p><b>FastAPI</b> позволяет использовать как <code>starlette.status</code>, так и <code>fastapi.status</code>
+            исключительно для удобства разработчиков. Но поставляется <code>fastapi.status</code> непосредственно
+            из Starlette.</p>
+        </div>
+
+        <h2>Изменение кода статуса по умолчанию</h2>
+        <p>Позже, в
+        <a target="_blank" href="https://fastapi.tiangolo.com/ru/advanced/response-change-status-code/">Руководстве для продвинутых пользователей</a>,
+        вы узнаете, как возвращать HTTP статус-код, отличный от значения по умолчанию, которое вы объявляете здесь.</p>
+    </article>
+</body>
+</html>

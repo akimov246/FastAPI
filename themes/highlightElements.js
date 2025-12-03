@@ -245,7 +245,7 @@ customElements.define('request-response-container', class extends HTMLElement {
             }
             fetch(url, requestInit)
             .then(response => {
-                if (response.redirected) {
+                if (response.status >= 300 && response.status < 400) {
                     window.location.href = response.url;
                     return `Redirected to ${response.url}`;
                 }
