@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Данные формы</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Данные формы</h1>
+        <p>Когда вам нужно получить поля формы вместо JSON, вы можете использовать <code>Form</code>.</p>
+        <div class="admonition info">
+            <h3>Дополнительная информация</h3>
+            <p>Чтобы использовать формы, сначала установите
+            <a target="_blank" href="https://github.com/Kludex/python-multipart">python-multipart</a>.</p>
+            <p>Убедитесь, что вы создали
+            <a target="_blank" href="https://fastapi.tiangolo.com/ru/virtual-environments/">виртуальное окружение</a>,
+            активировали его, а затем установили пакет, например:</p>
+            <pre><code class="language-bash">$ pip install python-multipart</code></pre>
+        </div>
+
+        <h2>Импорт <code>Form</code></h2>
+        <p>Импортируйте <code>Form</code> из <code>fastapi</code>:</p>
+<pre data-line="3" class="line-numbers"><code class="language-python">from  typing import Annotated
+
+from fastapi import FastAPI, Form
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+@app.post("/login")
+async def login(username: Annotated[str, Form()], password: Annotated[str, Form()]):
+    return {"username": username}
+</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">username:</label>
+            <label slot="labels">password:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/login">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="username" value="user">
+            <input slot="inputs" type="password" name="password" value="qwerty">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h2>Определение параметров <code>Form</code></h2>
+        <p>Создайте параметры формы так же, как это делается для <code>Body</code> или <code>Query</code>:</p>
+<pre data-line="22" class="line-numbers"><code class="language-python">from  typing import Annotated
+
+from fastapi import FastAPI, Form
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+@app.post("/login")
+async def login(username: Annotated[str, Form()], password: Annotated[str, Form()]):
+    return {"username": username}
+</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">username:</label>
+            <label slot="labels">password:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/login">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="username" value="user">
+            <input slot="inputs" type="password" name="password" value="qwerty">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Например, в одном из способов использования спецификации OAuth2 (называемом «потоком пароля») требуется
+        отправить <code>username</code> и <code>password</code> в виде полей формы.</p>
+        <p>Спецификация требует, чтобы поля были строго названы <code>username</code> и <code>password</code> и
+        отправлялись как поля формы, а не JSON.</p>
+        <p>С помощью <code>Form</code> вы можете объявить те же настройки, что и с <code>Body</code> (и <code>Query</code>,
+        <code>Path</code>, <code>Cookie</code>), включая валидацию, примеры, псевдонимы (например, <code>user-name</code>
+        вместо <code>username</code>) и т.д.</p>
+        <div class="admonition info">
+            <h3>Дополнительная информация</h3>
+            <p><code>Form</code> - это класс, который наследуется непосредственно от <code>Body</code>.</p>
+        </div>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Чтобы объявлять данные формы, вам нужно явно использовать <code>Form</code>, иначе параметры будут
+            интерпретированы как параметры запроса или параметры тела (JSON).</p>
+        </div>
+
+        <h2>О «полях формы»</h2>
+        <p>Обычно способ, которым HTML-формы (<code>&lt;form&gt;&lt;/form&gt;</code>) отправляют данные на сервер, используют
+        «специальное» кодирование для этих данных, отличное от JSON.</p>
+        <p><b>FastAPI</b> гарантирует, что эти данные будут прочитаны из нужного места, а не из JSON.</p>
+        <div class="admonition note">
+            <h3>Технические детали</h3>
+            <p>Данные из форм обычно кодируются с использованием «типа содержимого» <code>application/x-www-form-urlencoded</code>.</p>
+            <p>Но когда форма содержит файлы, она кодируется как <code>multipart/form-data</code>. О работе с файлами
+            вы прочтете в следующей главе.</p>
+            <p>Если вы хотите узнать больше про эти кодировки и поля формы, обратитесь к
+            <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/POST"><abbr title="Mozilla Development Network - Сеть разработчиков Mozilla">MDN</abbr> веб-документации для <code>POST</code></a>.</p>
+        </div>
+        <div class="admonition warning">
+            <h3>Предупреждение</h3>
+            <p>Вы можете объявлять несколько параметров <code>Form</code> в <i>операции пути</i>, но вы не можете
+            одновременно объявлять поля <code>Body</code>, которые вы ожидаете получить в виде JSON, так как запрос
+            будет иметь тело, закодированное с использованием <code>application/x-www-form-urlencoded</code>,
+            а не <code>application/json</code>.</p>
+            <p>Это не ограничение <b>FastAPI</b>, это часть протокола HTTP.</p>
+        </div>
+
+        <h2>Резюме</h2>
+        <p>Используйте <code>Form</code> для объявления входных параметров данных формы.</p>
+    </article>
+</body>
+</html>

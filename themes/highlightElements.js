@@ -207,42 +207,61 @@ customElements.define('request-response-container', class extends HTMLElement {
             pre.innerHTML = '';
             
             let url = inputs.at(0).value;
-            let method = inputs.at(1).value;
-            let data = {};
-            for (let input of inputs.slice(2)) {
-                if (input.value) {
-                    let value = input.value;
-                    if (input.tagName === 'TEXTAREA') {
-                        data = JSON.parse(value);
-                        continue;
-                    }
-                    if (/^\[.*]$/.test(value)) {
-                        value = JSON.parse(value);
-                    }
-                    if (input.dataset.body) {
-                        if (!data[input.dataset.body]) {
-                            data[input.dataset.body] = {};
-                        }
-                        data[input.dataset.body][input.name] = value;
-                    } else {
-                        data[input.name] = value;
-                    }
-                }
-            }
+            let method = inputs.at(1).value
+
             let requestInit = {
                     method: method,
                     credentials: 'include',
                     headers: new Headers()
             }
+
+            switch (button.dataset.type?.toLowerCase()) {
+                case 'formdata':
+                    let formData = new FormData();
+                    for (let input of inputs.slice(2)) {
+                        formData.append(input.name, input.value);
+                    }
+                    if (method.toLowerCase() !== 'get' && Object.keys(Object.fromEntries(formData)).length) {
+                        requestInit.body = formData;
+                    }
+                    break;
+
+                default: // JSON
+                    let data = {};
+                    for (let input of inputs.slice(2)) {
+                        if (input.value) {
+                            let value = input.value;
+                            if (input.tagName === 'TEXTAREA') {
+                                data = JSON.parse(value);
+                                continue;
+                            }
+                            if (/^\[.*]$/.test(value)) {
+                                value = JSON.parse(value);
+                            }
+                            if (input.dataset.body) {
+                                if (!data[input.dataset.body]) {
+                                    data[input.dataset.body] = {};
+                                }
+                                data[input.dataset.body][input.name] = value;
+                            } else {
+                                data[input.name] = value;
+                            }
+                        }
+                    }
+
+                    if (method.toLowerCase() !== 'get' && Object.keys(data).length) {
+                        requestInit.headers.append('Content-Type', 'application/json');
+                        requestInit.body = JSON.stringify(data)
+                    }
+            }
+
             if (button.dataset.extraHeadersJson) {
+                console.log(JSON.parse(button.dataset.extraHeadersJson))
                 for (let header of JSON.parse(button.dataset.extraHeadersJson)) {
                     requestInit.headers.append(...Object.entries(header)[0]);
                 }
             }
-            if (method.toLowerCase() !== 'get' && Object.keys(data).length) {
-                requestInit.headers.append('Content-Type', 'application/json');
-                requestInit.body = JSON.stringify(data)
-            }
+
             fetch(url, requestInit)
             .then(response => {
                 if (response.status >= 300 && response.status < 400) {
