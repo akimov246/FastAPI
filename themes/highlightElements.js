@@ -219,7 +219,9 @@ customElements.define('request-response-container', class extends HTMLElement {
                 case 'formdata':
                     let formData = new FormData();
                     for (let input of inputs.slice(2)) {
-                        formData.append(input.name, input.value);
+                        if (input.value) {
+                            formData.append(input.name, input.value);
+                        }
                     }
                     if (method.toLowerCase() !== 'get' && Object.keys(Object.fromEntries(formData)).length) {
                         requestInit.body = formData;

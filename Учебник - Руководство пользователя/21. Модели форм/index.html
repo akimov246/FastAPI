@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Модели форм</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Модели форм</h1>
+        <p>Вы можете использовать <b>Pydantic-модели</b> для объявления <b>полей формы</b> в FastAPI.</p>
+        <div class="admonition info">
+            <h3>Дополнительная информация</h3>
+            <p>Чтобы использовать формы, сначала установите
+            <a target="_blank" href="https://github.com/Kludex/python-multipart">python-multipart</a>.</p>
+            <p>Убедитесь, что вы создали
+            <a target="_blank" href="https://fastapi.tiangolo.com/ru/virtual-environments/">виртуальное окружение</a>,
+            активировали его, а затем установили пакет, например:</p>
+            <pre><code class="language-bash">$ pip install python-multipart</code></pre>
+        </div>
+
+        <h2>Pydantic-модели для форм</h2>
+        <p>Вам просто нужно объявить <b>Pydantic-модель</b> с полями, которые вы хотите получить как <b>поля формы</b>,
+        а затем объявить параметр как <code>Form</code>:</p>
+<pre data-line="22-24, 28" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Form
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class FormData(BaseModel):
+    username: str
+    password: str
+
+
+@app.post("/login")
+async def login(data: Annotated[FormData, Form()]):
+    return data</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">username:</label>
+            <label slot="labels">password:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/login">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="username" value="Rick">
+            <input slot="inputs" type="password" name="password" value="Portal Gun">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p><b>FastAPI извлечет</b> данные для <b>каждого поля</b> из <b>данных формы</b> в запросе и выдаст вам
+        объявленную Pydantic-модель.</p>
+
+        <h2>Проверьте документацию</h2>
+        <p>Вы можете проверить это в интерфейсе документации по адресу
+        <a target="_blank" href="http://127.0.0.1:8000/docs">http://127.0.0.1:8000/docs</a>.</p>
+
+        <h2>Запрет дополнительных полей формы</h2>
+        <p>В некоторых случаях (не особо часто встречающихся) вам может понадобиться <b>ограничить</b> поля формы
+        только теми, которые объявлены в Pydantic-модели. И <b>запретить</b> любые <b>дополнительные</b> поля.</p>
+        <p>Вы можете сконфигурировать Pydantic-модель так, чтобы запретить (<code>forbid</code>) все дополнительные
+        (<code>extra</code>) поля:</p>
+<pre data-line="25" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Form
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class FormData(BaseModel):
+    username: str
+    password: str
+    model_config = {"extra": "forbid"}
+
+
+@app.post("/login")
+async def login(data: Annotated[FormData, Form()]):
+    return data</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">username:</label>
+            <label slot="labels">password:</label>
+            <label slot="labels">extra:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/login">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="username" value="Rick">
+            <input slot="inputs" type="password" name="password" value="Portal Gun">
+            <input slot="inputs" type="text" name="extra" value="Mr. Poopybutthole">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Если клиент попробует отправить дополнительные данные, то в ответ он получит <b>ошибку</b>.</p>
+        <p>Например, если клиент попытается отправить поля формы:</p>
+        <ul>
+            <li>
+                <p><code>username</code>: <code>Rick</code></p>
+            </li>
+            <li>
+                <p><code>password</code>: <code>Portal Gun</code></p>
+            </li>
+            <li>
+                <p><code>extra</code>: <code>Mr. Poopybutthole</code></p>
+            </li>
+        </ul>
+        <p>То в ответ он получит <b>ошибку</b>, сообщающую ему, что поле <code>extra</code> не разрешено:</p>
+<pre><code class="language-json">{
+    "detail": [
+        {
+            "type": "extra_forbidden",
+            "loc": ["body", "extra"],
+            "msg": "Extra inputs are not permitted",
+            "input": "Mr. Poopybutthole"
+        }
+    ]
+}</code></pre>
+
+        <h2>Итоги</h2>
+        <p>Вы можете использовать Pydantic-модели для объявления полей форм в FastAPI.</p>
+    </article>
+</body>
+</html>
