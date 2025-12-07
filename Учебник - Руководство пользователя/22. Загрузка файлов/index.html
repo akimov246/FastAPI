@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Загрузка файлов</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Загрузка файлов</h1>
+        <p>Используя класс <code>File</code>, мы можем позволить клиентам загружать файлы.</p>
+        <div class="admonition info">
+            <h3>Дополнительная информация</h3>
+            <p>Чтобы использовать формы, сначала установите
+            <a target="_blank" href="https://github.com/Kludex/python-multipart">python-multipart</a>.</p>
+            <p>Убедитесь, что вы создали
+            <a target="_blank" href="https://fastapi.tiangolo.com/ru/virtual-environments/">виртуальное окружение</a>,
+            активировали его, а затем установили пакет, например:</p>
+            <pre><code class="language-bash">$ pip install python-multipart</code></pre>
+            <p>Это связано с тем, что загружаемые файлы передаются как «данные формы».</p>
+        </div>
+
+        <h2>Импорт <code>File</code></h2>
+        <p>Импортируйте <code>File</code> и <code>UploadFile</code> из модуля <code>fastapi</code>:</p>
+<pre data-line="3" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+@app.post("/file")
+async def create_file(file: Annotated[bytes, File()]):
+    return {"file_size": len(file)}
+
+
+@app.post("/uploadfile")
+async def create_upload_file(file: UploadFile):
+    return {"filename": file.filename}</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">file:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/file">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="file" name="file">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">file:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/uploadfile">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="file" name="file">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h2>Определите параметры <code>File</code></h2>
+        <p>Создайте параметры <code>file</code> так же, как вы это делаете для <code>Body</code> или <code>Form</code>:</p>
+<pre data-line="22" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+@app.post("/file")
+async def create_file(file: Annotated[bytes, File()]):
+    return {"file_size": len(file)}
+
+
+@app.post("/uploadfile")
+async def create_upload_file(file: UploadFile):
+    return {"filename": file.filename}</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">file:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/file">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="file" name="file">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">file:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/uploadfile">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="file" name="file">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <div class="admonition info">
+            <h3>Дополнительная информация</h3>
+            <p><code>File</code> - это класс, которые наследуется непосредственно от <code>Form</code>.</p>
+            <p>Но помните, что когда вы импортируете <code>Query</code>, <code>Path</code>, <code>File</code>
+            и другие из <code>fastapi</code>, на самом деле это функции, которые возвращаются специальные классы.</p>
+        </div>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Для объявления тела файла необходимо использовать <code>File</code>, поскольку в противном случае
+            параметры будут интерпретироваться как параметры запроса или параметры тела (JSON).</p>
+        </div>
+        <p>Файлы будут загружены как данные формы.</p>
+        <p>Если вы объявите тип параметра у <i>функции оператора пути</i> как <code>bytes</code>, то <b>FastAPI</b>
+        прочитает файл за вас, и вы получите его содержимое в виде <code>bytes</code>.</p>
+        <p>Следует иметь в виду, что все содержимое будет храниться в памяти. Это хорошо подходит для небольших файлов.</p>
+        <p>Однако возможны случаи, когда использование <code>UploadFile</code> может оказаться полезным.</p>
+
+        <h2>Параметры файла с <code>UploadFile</code></h2>
+        <p>Определите параметр файла типом <code>UploadFile</code>:</p>
+<pre data-line="27" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+@app.post("/file")
+async def create_file(file: Annotated[bytes, File()]):
+    return {"file_size": len(file)}
+
+
+@app.post("/uploadfile")
+async def create_upload_file(file: UploadFile):
+    return {"filename": file.filename}</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">file:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/file">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="file" name="file">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">file:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/uploadfile">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="file" name="file">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Использование <code>UploadFile</code> имеет ряд преимуществ перед <code>bytes</code>:</p>
+        <ul>
+            <li>
+                <p>Использовать <code>File()</code> в значении параметра по умолчанию не обязательно.</p>
+            </li>
+            <li>
+                <p>При этом используется «буферный» файл:</p>
+                <ul>
+                    <li>
+                        <p>Файл, хранящийся в памяти до максимального предела размера, после преодоления которого
+                        он будет храниться на диске.</p>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <p>Это означает, что он будет хорошо работать с большими файлами, такими как изображения, видео,
+                большие бинарные файлы и т.д., не потребляя при этом всю память.</p>
+            </li>
+            <li>
+                <p>Из загруженного файла можно получить метаданные.</p>
+            </li>
+            <li>
+                <p>Он реализует
+                <a target="_blank" href="https://docs.python.org/3/glossary.html#term-file-like-object">file-like</a>
+                <code>async</code> интерфейс.</p>
+            </li>
+            <li>
+                <p>Он предоставляет реальный объект Python
+                <a target="_blank" href="https://docs.python.org/3/library/tempfile.html#tempfile.SpooledTemporaryFile">SpooledTemporaryFile</a>
+                который вы можете передать непосредственно другим библиотекам,  которые ожидают файл в качестве объекта.</p>
+            </li>
+        </ul>
+
+        <h3><code>UploadFile</code></h3>
+        <p><code>UploadFile</code> имеет следующие атрибуты:</p>
+        <ul>
+            <li>
+                <p><code>filename</code>: строка <code>str</code> с исходным именем файла, который был загружен
+                (например, <code>myimage.jgp</code>).</p>
+            </li>
+            <li>
+                <p><code>content_type</code>: строка <code>str</code> с типом содержимого (MIME type / media type)
+                (например, <code>image/jpeg</code>).</p>
+            </li>
+            <li>
+                <p><code>file</code>: <a target="_blank" href="https://docs.python.org/3/library/tempfile.html#tempfile.SpooledTemporaryFile">SpooledTemporaryFile</a>
+                (<a target="_blank" href="https://docs.python.org/3/glossary.html#term-file-like-object">like-file</a> объект).
+                Это фактический файл Python, который можно передавать непосредственно другим функциям или библиотекам,
+                ожидающим файл в качестве объекта.</p>
+            </li>
+        </ul>
+        <p><code>UploadFile</code> имеет следующие методы <code>async</code>. Все они вызывают соответствующие
+        файловые методы (используя внутренний <code>SpooledTemporaryFile</code>).</p>
+        <ul>
+            <li>
+                <p><code>write(data)</code>: записать данные <code>data</code> (<code>str</code> или <code>bytes</code>)
+                в файл.</p>
+            </li>
+            <li>
+                <p><code>read(size)</code>: прочитать количество <code>size</code> (<code>int</code>) байт/символов
+                из файла.</p>
+            </li>
+            <li>
+                <p><code>seek(offset)</code>: перейти к байту на позиции <code>offset</code> (<code>int</code>) в файле.</p>
+                <ul>
+                    <li>
+                        <p>Например, <code>await myfile.seek(0)</code> перейдет к началу файла.</p>
+                    </li>
+                    <li>
+                        <p>Это особенно удобно, если вы один раз выполнили команду <code>await myfile.read()</code>,
+                        а затем вам нужно прочитать содержимое файла еще раз.</p>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <p><code>close()</code>: закрыть файл.</p>
+            </li>
+        </ul>
+        <p>Поскольку все эти методы являются <code>async</code> методами, вам следует использовать <code>await</code>
+        вместе с ними.</p>
+        <p>Например, внутри <code>async</code> <i>функции операции пути</i> можно получить содержимое с помощью:</p>
+        <pre><code class="language-python">contents = await myfile.read()</code></pre>
+        <p>Если вы находитесь внутри обычной <code>def</code> <i>функции операции пути</i>, можно получить прямой
+        доступ к файлу <code>UploadFile.file</code>, например:</p>
+        <pre><code class="language-python">contents = myfile.file.read()</code></pre>
+        <div class="admonition note">
+            <h3>Технические детали <code>async</code></h3>
+            <p>При использовании методов <code>async</code> <b>FastAPI</b> запускает файловые методы в пуле потоков
+            и ожидает их.</p>
+        </div>
+        <div class="admonition note">
+            <h3>Технические детали Starlette</h3>
+            <p><b>FastAPI</b> наследует <code>UploadFile</code> непосредственно из <b>Starlette</b>, но добавляет
+            некоторые детали для совместимости с <b>Pydantic</b> и другими частями FastAPI.</p>
+        </div>
+
+        <h2>Что такое «данные формы»</h2>
+        <p>Способ, которым HTML-формы (<code>&lt;form&gt;&lt;/form&gt;)</code> отправляют данные на сервер, обычно
+        использует «специальную» кодировку для этих данных, отличную от JSON.</p>
+        <p><b>FastAPI</b> позаботится о том, чтобы считать эти данные из нужного места, а не из JSON.</p>
+        <div class="admonition note">
+            <h3>Технические детали</h3>
+            <p>Данные из форм обычно кодируются с использованием «media type» <code>application/x-www-form-urlencoded</code>
+            когда они не включают файлы.</p>
+            <p>Но когда форма включает файлы, она кодируется как <code>multipart/form-data</code>. Если вы используете
+            <code>File</code>, <b>FastAPI</b> будет знать, что ему нужно получить файлы из нужной части тела.</p>
+            <p>Если вы хотите узнать больше об этих кодировках и полях форм, перейдите по ссылке
+            <a><abbr title="Mozilla Developer Network - Сеть разработчиков Mozilla">MDN</abbr> web docs for <code>POST</code></a>.</p>
+        </div>
+        <div class="admonition warning">
+            <h3>Внимание</h3>
+            <p>В операции <i>функции операции пути</i> можно объявить несколько параметров <code>File</code> и
+            <code>Form</code>, но нельзя также объявлять поля <code>Body</code>, которые предполагается получать
+            в виде JSON, поскольку тело запроса будет закодировано с помощью <code>multipart/form-data</code>,
+            а не <code>application/json</code>.</p>
+            <p>Это не является ограничением <b>FastAPI</b>, это часть протокола HTTP.</p>
+        </div>
+
+        <h2>Необязательная загрузка файлов</h2>
+        <p>Вы можете сделать загрузку файла необязательной, используя стандартные аннотации типов и установив
+        значение по умолчанию <code>None</code>:</p>
+<pre data-line="22, 30" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+@app.post("/file")
+async def create_file(file: Annotated[bytes | None, File()] = None):
+    if not file:
+        return {"message": "No file sent"}
+    else:
+        return {"file_size": len(file)}
+
+
+@app.post("/uploadfile")
+async def create_upload_file(file: UploadFile | None = None):
+    if not file:
+        return {"message": "No upload file sent"}
+    else:
+        return {"filename": file.filename}</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">file:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/file">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="file" name="file">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">file:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/uploadfile">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="file" name="file">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h2><code>UploadFile</code> с дополнительными метаданными</h2>
+        <p>Вы также можете использовать <code>File()</code> вместе с <code>UploadFile</code>, например,
+        для установки дополнительных метаданных:</p>
+<pre data-line="22, 30" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+@app.post("/file")
+async def create_file(file: Annotated[bytes | None, File(description="A file read as bytes")] = None):
+    if not file:
+        return {"message": "No file sent"}
+    else:
+        return {"file_size": len(file)}
+
+
+@app.post("/uploadfile")
+async def create_upload_file(file: Annotated[UploadFile | None, File(description="A file read as UploadFile")] = None):
+    if not file:
+        return {"message": "No upload file sent"}
+    else:
+        return {"filename": file.filename}</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">file:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/file">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="file" name="file">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">file:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/uploadfile">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="file" name="file">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h2>Загрузка нескольких файлов</h2>
+        <p>Можно одновременно загружать несколько файлов.</p>
+        <p>Они будут связаны с одним и тем же «полем формы», отправляемым с помощью данных формы.</p>
+        <p>Для этого необходимо объявить список <code>bytes</code> или <code>UploadFile</code>:</p>
+<pre data-line="22, 27" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+@app.post("/files")
+async def create_files(files: Annotated[list[bytes], File()]):
+    return {"size_files": [len(file) for file in files]}
+
+
+@app.post("/uploadfiles")
+async def create_upload_files(files: list[UploadFile]):
+    return {"filenames": [file.filename for file in files]}</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">files:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/files">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="file" multiple name="files">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">files:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/uploadfiles">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="file" multiple name="files">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Вы получите, как и было объявлено, список <code>list</code> из <code>bytes</code> или <code>UploadFile</code>.</p>
+
+        <h3>Загрузка нескольких файлов с дополнительными метаданными</h3>
+        <p>Так же, как и раньше, вы можете использовать <code>File()</code> для задания дополнительных метаданных
+        параметров, даже для <code>UploadFile</code>:</p>
+<pre data-line="22, 27" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+@app.post("/files")
+async def create_files(files: Annotated[list[bytes], File(description="Multiple files as bytes")]):
+    return {"size_files": [len(file) for file in files]}
+
+
+@app.post("/uploadfiles")
+async def create_upload_files(files: Annotated[list[UploadFile], File(description="Multiple files as UploadFile")]):
+    return {"filenames": [file.filename for file in files]}</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">files:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/files">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="file" multiple name="files">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">files:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/uploadfiles">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="file" multiple name="files">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h2>Резюме</h2>
+        <p>Используйте <code>File</code>, <code>bytes</code> и <code>UploadFile</code> для работы с файлами, которые
+        будут загружаться и передаваться в виде данных формы.</p>
+    </article>
+</body>
+</html>

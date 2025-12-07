@@ -158,3 +158,9 @@ div.admonition.danger h3:first-of-type::before {
 abbr {
     cursor: help;
 }
+
+input[type="file"] {
+    all: initial;
+    margin-top: 0.3rem;
+    width: 100%;
+}

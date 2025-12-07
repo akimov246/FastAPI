@@ -220,7 +220,13 @@ customElements.define('request-response-container', class extends HTMLElement {
                     let formData = new FormData();
                     for (let input of inputs.slice(2)) {
                         if (input.value) {
-                            formData.append(input.name, input.value);
+                            if (input.type === 'file') {
+                                for (let file of input.files) {
+                                    formData.append(input.name, file);
+                                }
+                            } else {
+                                formData.append(input.name, input.value);
+                            }
                         }
                     }
                     if (method.toLowerCase() !== 'get' && Object.keys(Object.fromEntries(formData)).length) {
