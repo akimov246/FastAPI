@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Файлы и формы в запросе</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Файлы и формы в запросе</h1>
+        <p>Вы можете определять файлы и поля формы одновременно, используя <code>File</code> и <code>Form</code>.</p>
+        <div class="admonition info">
+            <h3>Информация</h3>
+            <p>Чтобы получать загруженные файлы и/или данные форм, сначала установите
+            <a target="_blank" href="https://github.com/Kludex/python-multipart">python-multipart</a>.</p>
+            <p>Убедитесь, что вы создали
+            <a target="_blank" href="https://fastapi.tiangolo.com/ru/virtual-environments/">виртуальное окружение</a>,
+            активировали его, а затем установили пакет, например:</p>
+            <pre><code class="language-bash">$ pip install python-multipart</code></pre>
+        </div>
+
+        <h2>Импортируйте <code>File</code> и <code>Form</code></h2>
+<pre data-line="3" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, File, Form, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+@app.post("/files")
+async def create_file(
+        file: Annotated[bytes, File()],
+        fileb: Annotated[UploadFile, File()],
+        token: Annotated[str, Form()]
+):
+    return {
+        "file_size": len(file),
+        "token": token,
+        "fileb_content_type": fileb.content_type
+    }</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">file:</label>
+            <label slot="labels">fileb:</label>
+            <label slot="labels">token:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/files">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="file" name="file">
+            <input slot="inputs" type="file" name="fileb">
+            <input slot="inputs" type="text" name="token" value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h2>Определите параметры <code>File</code> и <code>Form</code></h2>
+        <p>Создайте параметры файла и формы таким же образом, как для <code>Body</code> или <code>Query</code>:</p>
+<pre data-line="23-25" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, File, Form, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+@app.post("/files")
+async def create_file(
+        file: Annotated[bytes, File()],
+        fileb: Annotated[UploadFile, File()],
+        token: Annotated[str, Form()]
+):
+    return {
+        "file_size": len(file),
+        "token": token,
+        "fileb_content_type": fileb.content_type
+    }</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">file:</label>
+            <label slot="labels">fileb:</label>
+            <label slot="labels">token:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/files">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="file" name="file">
+            <input slot="inputs" type="file" name="fileb">
+            <input slot="inputs" type="text" name="token" value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Файлы и поля формы будут загружены в виде данных формы, и вы получите файлы и поля формы.</p>
+        <p>Вы можете объявить некоторые файлы как <code>bytes</code>, а некоторые - как <code>UploadFile</code>.</p>
+        <div class="admonition warning">
+            <h3>Внимание</h3>
+            <p>Вы можете объявить несколько параметров <code>File</code> и <code>Form</code> в операции пути, но вы
+            не можете также объявить поля <code>Body</code>, которые вы ожидаете в виде JSON, так как запрос будет
+            иметь тело, закодированное с помощью <code>multipart/form-data</code> вместо <code>application/json</code>.</p>
+            <p>Это не ограничение <b>FastAPI</b>, это часть протокола HTTP.</p>
+        </div>
+
+        <h2>Резюме</h2>
+        <p>Используйте <code>File</code> и <code>Form</code> вместе, когда необходимо получить данные и файлы в одном
+        запросе.</p>
+    </article>
+</body>
+</html>

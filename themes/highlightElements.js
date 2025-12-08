@@ -118,6 +118,7 @@ customElements.define('request-response-container', class extends HTMLElement {
                     padding-left: 0.5rem;
                     font-family: 'Roboto', sans-serif;
                     transition: box-shadow 0.5s;
+                    max-height: 1.5rem;
                 }
                 
                 ::slotted(button) {

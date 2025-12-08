@@ -163,4 +163,5 @@ input[type="file"] {
     all: initial;
     margin-top: 0.3rem;
     width: 100%;
+    white-space: nowrap;
 }
