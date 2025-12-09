@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Обработка ошибок</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Обработка ошибок</h1>
+        <p>Существует множество ситуаций, когда необходимо сообщить об ошибке клиенту, использующему ваш API.</p>
+        <p>Таким клиентом может быть браузер с фронтендом, чужой код, IoT-устройство и т.д.</p>
+        <p>Возможно, вам придется сообщить клиенту о следующем:</p>
+        <ul>
+            <li>
+                <p>Клиент не имеет достаточных привилегий для выполнения данной операции.</p>
+            </li>
+            <li>
+                <p>Клиент не имеет доступа к данному ресурсу.</p>
+            </li>
+            <li>
+                <p>Элемент, к которому клиент пытается получить доступ, не существует.</p>
+            </li>
+            <li>
+                <p>и т.д.</p>
+            </li>
+        </ul>
+        <p>В таких случаях обычно возвращается <b>HTTP-код статуса ответа</b> в диапазоне <b>400</b> (от 400 до 499).</p>
+        <p>Они похожи на двухсотые HTTP статус-коды (от 200 до 299), которые означают, что запрос обработан успешно.</p>
+        <p>Четырехсотые статус-коды означают, что ошибка произошла по вине клиента.</p>
+
+        <h2>HTTPException</h2>
+        <p>Для возврата клиенту HTTP-ответов с ошибками используется <code>HTTPException</code>.</p>
+
+        <h3>Импортируйте <code>HTTPException</code></h3>
+<pre data-line="1" class="line-numbers"><code class="language-python">from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+items = {"foo": "The Foo Wrestlers"}
+
+
+@app.get("/items/{item_id}")
+async def read_item(item_id: str):
+    if item_id not in items:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return {"item": items[item_id]}</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/foo">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h3>Вызовите <code>HTTPException</code> в своем коде</h3>
+        <p><code>HTTPException</code> - это обычное исключение Python с дополнительными данными, актуальными для API.</p>
+        <p>Поскольку это исключение Python, то его не <b>возвращают</b>, а <b>вызывают</b>.</p>
+        <p>Это также означает, что если вы находитесь внутри функции, которая вызывается внутри вашей
+        <i>функции операции пути</i>, и вы поднимаете <code>HTTPException</code> внутри этой функции, то она не
+        будет выполнять остальной код в <i>функции операции пути</i>, а сразу завершит запрос и отправит HTTP-ошибку
+        из <code>HTTPException</code> клиенту.</p>
+        <p>О том, насколько выгоднее <b>вызывать</b> исключение, чем <b>возвращать</b> значение, будет рассказано
+        в разделе, посвященном зависимостям и безопасности.</p>
+        <p>В данном примере, когда клиент запрашивает элемент по несуществующему ID, возникает исключение со
+        статус-кодом <code>404</code>:</p>
+<pre data-line="24" class="line-numbers"><code class="language-python">from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+items = {"foo": "The Foo Wrestlers"}
+
+
+@app.get("/items/{item_id}")
+async def read_item(item_id: str):
+    if item_id not in items:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return {"item": items[item_id]}</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/foo">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h3>Возвращаемый ответ</h3>
+        <p>Если клиент запросит <a target="_blank" href="http://127.0.0.1:8000/items/foo">http://127.0.0.1:8000/items/foo</a>
+        (<code>item_id="foo"</code>), то он получит статус-код <code>200</code> и ответ в формате JSON:</p>
+<pre><code class="language-json">{
+    "item": "The Foo Wrestlers"
+}</code></pre>
+        <p>Но если клиент запросит <a target="_blank" href="http://127.0.0.1:8000/items/foo">http://127.0.0.1:8000/items/bar</a>
+        (несуществующий <code>item_id="bar"</code>), то он получит статус-код <code>404</code> (ошибка «не найдено»)
+        и JSON-ответ в виде:</p>
+<pre><code class="language-json">{
+    "detail": "Item not found"
+}</code></pre>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>При вызове <code>HTTPException</code> в качестве параметра <code>detail</code> можно передавать любое
+            значение, которое может быть преобразовано в JSON, а не только <code>str</code>.</p>
+            <p>Вы можете передать <code>dict</code>, <code>list</code> и т.д.</p>
+            <p>Они автоматически обрабатываются <b>FastAPI</b> и преобразуются в JSON.</p>
+        </div>
+    </article>
+</body>
+</html>
