@@ -277,10 +277,18 @@ customElements.define('request-response-container', class extends HTMLElement {
                     window.location.href = response.url;
                     return `Redirected to ${response.url}`;
                 }
+                if (response.headers.get('Content-Type').includes('text/plain')) {
+                    return response.text();
+                }
+                
                 return response.json();
             })
-            .then(json => {
-                pre.innerHTML = JSON.stringify(json, undefined, 4);
+            .then(data => {
+                if (typeof data === 'string') {
+                    pre.innerHTML = data;
+                } else {
+                    pre.innerHTML = JSON.stringify(data, undefined, 4);
+                }
                 Prism.highlightElement(pre);
                 addCopyButton(pre);
             })
