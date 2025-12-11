@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Конфигурация операций пути</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Конфигурация операций пути</h1>
+        <p>Существует несколько параметров, которые вы можете передать вашему <i>декоратору операций пути</i>
+        для его настройки.</p>
+        <div class="admonition warning">
+            <h3>Внимание</h3>
+            <p>Помните, что эти параметры передаются непосредственно <i>декоратору операций пути</i>, а не вашей
+            <i>функции-обработчику операций пути</i>.</p>
+        </div>
+
+        <h2>Статус-код ответа</h2>
+        <p>Вы можете определить (HTTP) <code>status_code</code>, который будет использован в ответах вашей
+        <i>операции пути</i>.</p>
+        <p>Вы можете передать только <code>int</code>-значение кода, например <code>404</code>.</p>
+        <p>Но если вы не помните, для чего нужен каждый числовой код, вы можете использовать сокращенные константы
+        в параметре <code>status</code>:</p>
+<pre data-line="1, 28" class="line-numbers"><code class="language-python">from fastapi import FastAPI, status
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class Item(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+    tags: set[str] = set()
+
+
+@app.post("/items", response_model=Item, status_code=status.HTTP_201_CREATED)
+async def create_item(item: Item):
+    return item</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">name:</label>
+            <label slot="labels">description:</label>
+            <label slot="labels">price:</label>
+            <label slot="labels">tax:</label>
+            <label slot="labels">tags:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="name" value="Foo">
+            <input slot="inputs" type="text" name="description" value="The pretender">
+            <input slot="inputs" type="text" name="price" value="42.0">
+            <input slot="inputs" type="text" name="tax" value="3.2">
+            <input slot="inputs" type="text" name="tags" value='["tag1", "tag2", "tag3"]'>
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Этот статус-код будет использован в ответе и будет добавлен в схему OpenAPI.</p>
+        <div class="admonition note">
+            <h3>Технические детали</h3>
+            <p>Вы также можете использовать <code>from starlette import status</code>.</p>
+            <p><b>FastAPI</b> предоставляет тот же <code>starlette.status</code> под псевдонимом <code>fastapi.status</code>
+            для удобства разработчика. Но его источник - это непосредственно Starlette.</p>
+        </div>
+
+        <h2>Теги</h2>
+        <p>Вы можете добавлять теги к вашим <i>операциям пути</i>, добавив параметр <code>tags</code> с <code>list</code>
+        заполненным <code>str</code>-значениями (обычно в нем только одна строка):</p>
+<pre data-line="28, 33, 38" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class Item(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+    tags: set[str] = set()
+
+
+@app.post("/items", response_model=Item, tags=["items"])
+async def create_item(item: Item):
+    return item
+
+
+@app.get("/items", tags=["items"])
+async def read_items():
+    return [{"name": "Foo", "price": 42}]
+
+
+@app.get("/users", tags=["users"])
+async def read_users():
+    return [{"username": "johndoe"}]</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">name:</label>
+            <label slot="labels">description:</label>
+            <label slot="labels">price:</label>
+            <label slot="labels">tax:</label>
+            <label slot="labels">tags:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="name" value="Foo">
+            <input slot="inputs" type="text" name="description" value="The pretender">
+            <input slot="inputs" type="text" name="price" value="42.0">
+            <input slot="inputs" type="text" name="tax" value="3.2">
+            <input slot="inputs" type="text" name="tags" value='["tag1", "tag2", "tag3"]'>
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/users">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Они будут добавлены в схему OpenAPI и будут использованы в автоматической документации интерфейса:
+        <a target="_blank" href="http://127.0.0.1:8000/docs">http://127.0.0.1:8000/docs</a>.</p>
+
+        <h3>Теги с перечислениями</h3>
+        <p>Если у вас большое приложение, вы можете прийти к необходимости добавить <b>несколько тегов</b>,
+        и возможно, вы хотите убедиться в том, что всегда используете <b>один и тот же тег</b>
+        для связанных <i>операций пути</i>.</p>
+        <p>В этих случаях, имеет смысл хранить теги в классе <code>Enum</code>.</p>
+        <p><b>FastAPI</b> поддерживает это так же, как и в случае с обычными строками:</p>
+<pre data-line="21-23, 26, 31" class="line-numbers"><code class="language-python">from enum import Enum
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class Tags(Enum):
+    items = 'items'
+    users = 'users'
+
+
+@app.get("/items_with_enum_tag", tags=[Tags.items])
+async def get_items():
+    return ["Portal gun", "Plumbus"]
+
+
+@app.get("/users_with_enum_tag", tags=[Tags.users])
+async def get_users():
+    return ["Rick", "Morty"]</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items_with_enum_tag">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/users_with_enum_tag">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h2>Краткое и развернутое содержание</h2>
+        <p>Вы можете добавить параметры <code>summary</code> и <code>description</code>:</p>
+<pre data-line="32-33" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class Item(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+    tags: set[str] = set()
+
+
+@app.post(
+    "/items",
+    response_model=Item,
+    status_code=status.HTTP_201_CREATED, tags=["items"],
+    summary="Create an item",
+    description="Create an item with all the information, name, description, price, tax and a set of unique tags"
+)
+async def create_item(item: Item):
+    return item</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">name:</label>
+            <label slot="labels">description:</label>
+            <label slot="labels">price:</label>
+            <label slot="labels">tax:</label>
+            <label slot="labels">tags:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="name" value="Foo">
+            <input slot="inputs" type="text" name="description" value="The pretender">
+            <input slot="inputs" type="text" name="price" value="42.0">
+            <input slot="inputs" type="text" name="tax" value="3.2">
+            <input slot="inputs" type="text" name="tags" value='["tag1", "tag2", "tag3"]'>
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h2>Описание из строк документации</h2>
+        <p>Так как описания обычно длинные и содержат много строк, вы можете объявить описание <i>операции пути</i>
+        в функции <abbr title="Многострочный текст, первое выражение внутри функции (не присвоенный какой-либо переменной), используемый для документации">строки документации</abbr>
+        и <b>FastAPI</b> прочитает ее отсюда.</p>
+        <p>Вы можете использовать <a target="_blank" href="https://en.wikipedia.org/wiki/Markdown">Markdown</a> в строке
+        документации, и он будет интерпретирован и отображен корректно (с учетом отступа в строке документации).</p>
+<pre data-line="30-38" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class Item(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+    tags: set[str] = set()
+
+
+@app.post("/items", response_model=Item, summary="Create an item")
+async def create_item(item: Item):
+    """
+    Create an item with all the information:
+
+    - **name**: each item must have a name
+    - **description**: a long description
+    - **price**: required
+    - **tax**: if the item doesn't have tax, you can omit this
+    - **tags**: a set of unique tag strings for this item
+    """
+    return item</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">name:</label>
+            <label slot="labels">description:</label>
+            <label slot="labels">price:</label>
+            <label slot="labels">tax:</label>
+            <label slot="labels">tags:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="name" value="Foo">
+            <input slot="inputs" type="text" name="description" value="The pretender">
+            <input slot="inputs" type="text" name="price" value="42.0">
+            <input slot="inputs" type="text" name="tax" value="3.2">
+            <input slot="inputs" type="text" name="tags" value='["tag1", "tag2", "tag3"]'>
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Он будет использован в интерактивной документации:
+        <a target="_blank" href="http://127.0.0.1:8000/docs#/items/create_item_items_post">http://127.0.0.1:8000/docs#/items/create_item_items_post</a>.</p>
+
+        <h2>Описание ответа</h2>
+        <p>Вы можете указать описание ответа с помощью параметра <code>response_description</code>:</p>
+<pre data-line="32" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class Item(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+    tags: set[str] = set()
+
+
+@app.post(
+    "/items",
+    response_model=Item,
+    summary="Create an item",
+    response_description="The created item"
+)
+async def create_item(item: Item):
+    """
+    Create an item with all the information:
+
+    - **name**: each item must have a name
+    - **description**: a long description
+    - **price**: required
+    - **tax**: if the item doesn't have tax, you can omit this
+    - **tags**: a set of unique tag strings for this item
+    """
+    return item</code></pre>
+        <div class="admonition info">
+            <h3>Дополнительная информация</h3>
+            <p>Помните, что <code>response_description</code> относится конкретно к ответу, а <code>description</code>
+            относится к <i>операции пути</i> в целом.</p>
+        </div>
+        <div class="admonition note">
+            <h3>Check</h3>
+            <p>OpenAPI указывает, что каждой <i>операции пути</i> необходимо описание ответа.</p>
+            <p>Если вдруг вы не укажите его, то <b>FastAPI</b> автоматически сгенерирует это описание с текстом
+            «Successful response».</p>
+        </div>
+        <p><a target="_blank" href="http://127.0.0.1:8000/docs#/items/create_item_items_post">http://127.0.0.1:8000/docs#/items/create_item_items_post</a></p>
+
+        <h2>Обозначение <i>операции пути</i> как устаревшей</h2>
+        <p>Если вам необходимо пометить <i>операцию пути</i> как
+        <abbr title="Устаревшее, не рекомендовано к использованию">устаревшую</abbr>, при этом не удаляя ее,
+        передайте параметр <code>deprecated</code>:</p>
+<pre data-line="29" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+@app.get("/items", tags=["items"])
+async def read_items():
+    return [{"name": "Foo", "price": 42}]
+
+
+@app.get("/users", tags=["users"])
+async def read_users():
+    return [{"username": "johndoe"}]
+
+
+@app.get("/elements", tags=["items"], deprecated=True)
+async def read_elements():
+    return [{"item_id": "Foo"}]</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/users">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/elements">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Он будет четко помечен как устаревший в интерактивной документации:
+        <a target="_blank" href="http://127.0.0.1:8000/docs#/items/read_elements_elements_get">http://127.0.0.1:8000/docs#/items/read_elements_elements_get</a>.</p>
+
+        <h2>Резюме</h2>
+        <p>Вы можете легко конфигурировать и добавлять метаданные в ваши <i>операции пути</i>, передавая
+        параметры <i>декораторам операций пути</i>.</p>
+    </article>
+</body>
+</html>
