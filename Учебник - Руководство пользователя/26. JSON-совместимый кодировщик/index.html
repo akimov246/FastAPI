@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>JSON-совместимый кодировщик</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>JSON-совместимый кодировщик</h1>
+        <p>В некоторых случаях может потребоваться преобразовать тип данных (например, Pydantic-модели) в тип,
+        совместимый с JSON (например, <code>dict</code>, <code>list</code> и т.д.).</p>
+        <p>Например, если необходимо хранить его в базе данных.</p>
+        <p>Для этого <b>FastAPI</b> предоставляет функцию <code>jsonable_encoder()</code>.</p>
+
+        <h2>Использование <code>jsonable_encoder</code></h2>
+        <p>Представим, что у вас есть база данных <code>fake_db</code>, которая принимает только JSON-совместимые данные.</p>
+        <p>Например, она не принимает объекты <code>datetime</code>, так как они не совместимы с JSON.</p>
+        <p>В таком случае объект <code>datetime</code> следует преобразовать в строку соответствующую
+        <a target="_blank" href="https://en.wikipedia.org/wiki/ISO_8601">формату ISO</a>.</p>
+        <p>Точно так же эта база данных не может принять Pydantic-модель (объект с атрибутами), а только <code>dict</code>.</p>
+        <p>Для этого можно использовать функцию <code>jsonable_encoder</code>.</p>
+        <p>Она принимает объект, например, Pydantic-модель, и возвращает его версию, совместимую с JSON.</p>
+<pre data-line="4, 34" class="line-numbers"><code class="language-javascript">from datetime import datetime
+
+from fastapi import FastAPI
+from fastapi.encoders import jsonable_encoder
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+fake_db = {}
+
+
+class Item(BaseModel):
+    title: str
+    timestamp: datetime
+    description: str | None = None
+
+
+@app.put("/items/{id}")
+async def update_item(id: str, item: Item):
+    json_compatible_item_data = jsonable_encoder(item)
+    fake_db[id] = json_compatible_item_data
+    return fake_db</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">title:</label>
+            <label slot="labels">timestamp:</label>
+            <label slot="labels">description:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/1">
+            <input slot="inputs" type="text" name="method" value="PUT">
+            <input slot="inputs" type="text" name="title" value="Foo">
+            <input slot="inputs" type="text" name="timestamp" value="2025-12-12T22:50">
+            <input slot="inputs" type="text" name="description" value="Description of Foo">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>В данном примере она преобразует Pydantic-модель в <code>dict</code>, а <code>datetime</code> - в <code>str</code>.</p>
+        <p>Результатом ее вызова является объект, которые может быть закодирован с помощью функции из стандартной
+        библиотеки Python - <a target="_blank" href="https://docs.python.org/3/library/json.html#json.dumps">json.dumps()</a>.</p>
+        <p>Функция не возвращает большой <code>str</code>, содержащий данные в формате JSON (в виде строки). Она
+        возвращает стандартную структуру данных Python (например, <code>dict</code>) со значениями и подзначениями,
+        которые совместимы с JSON.</p>
+        <div class="admonition note">
+            <h3>Примечание</h3>
+            <p><code>jsonable_encoder</code> фактически используется <b>FastAPI</b> внутри системы для преобразования
+            данных. Однако он полезен и во многих других сценариях.</p>
+        </div>
+    </article>
+</body>
+</html>
