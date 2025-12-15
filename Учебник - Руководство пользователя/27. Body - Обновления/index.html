@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Body - Обновления</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Body - Обновления</h1>
+        <h2>Обновления с заменой при помощи <code>PUT</code></h2>
+        <p>Для полного обновления элемента можно воспользоваться операцией
+        <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/PUT">HTTP <code>PUT</code></a>.</p>
+        <p>Вы можете использовать <code>jsonable_encoder</code>, чтобы преобразовать входные данные в данные, которые
+        можно сохранить как JSON (например, в NoSQL-базе данных).</p>
+        <p>Например, преобразование <code>datetime</code> в <code>str</code>.</p>
+<pre data-line="41-45" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.encoders import jsonable_encoder
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class Item(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    price: float | None = None
+    tax: float = 10.5
+    tags: list[str] = []
+
+
+items = {
+    "foo": {"name": "Foo", "price": 50.2},
+    "bar": {"name": "Bar", "description": "The bartenders", "price": 62, "tax": 20.2},
+    "baz": {"name": "Baz", "description": None, "price": 50.2, "tax": 10.5, "tags": []},
+}
+
+
+@app.get("/items/{item_id}", response_model=Item)
+async def read_item(item_id: str):
+    return items[item_id]
+
+
+@app.put("/items/{item_id}", response_model=Item)
+async def update_item(item_id: str, item: Item):
+    update_item_encoded = jsonable_encoder(item)
+    items[item_id] = update_item_encoded
+    return update_item_encoded</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/bar">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">name:</label>
+            <label slot="labels">description:</label>
+            <label slot="labels">price:</label>
+            <label slot="labels">tax:</label>
+            <label slot="labels">tags:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/bar">
+            <input slot="inputs" type="text" name="method" value="PUT">
+            <input slot="inputs" type="text" name="name" value="Barz">
+            <input slot="inputs" type="text" name="description">
+            <input slot="inputs" type="text" name="price" value="3">
+            <input slot="inputs" type="text" name="tax">
+            <input slot="inputs" type="text" name="tags">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p><code>PUT</code> используется для получения данных, которые должны полностью заменить существующие данные.</p>
+
+        <h3>Предупреждение о замене</h3>
+        <p>Это означает, что если вы хотите обновить элемент <code>bar</code>, используя <code>PUT</code> с телом,
+        содержащим:</p>
+<pre><code class="language-json">{
+    "name": "Barz",
+    "price": 3,
+    "description": None
+}</code></pre>
+        <p>Поскольку оно не включает уже сохраненный атрибут <code>"tax": 20.2</code>, входная модель примет
+        значение по умолчанию <code>"tax": 10.5</code>.</p>
+        <p>И данные будут сохранены с этим «новым» <code>tax</code>, равным <code>10.5</code>.</p>
+
+        <h2>Частичное обновление с помощью <code>PATCH</code></h2>
+        <p>Также можно использовать
+        <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/PATCH">HTTP <code>PATCH</code></a>
+        операцию для <i>частичного</i> обновления данных.</p>
+        <p>Это означает, что можно передавать только те данные, которые необходимо обновить, оставляя остальные
+        нетронутыми.</p>
+        <div class="admonition note">
+            <h3>Технические детали</h3>
+            <p><code>PATCH</code> менее распространен и известен, чем <code>PUT</code>.</p>
+            <p>А многие команды используют только <code>PUT</code>, даже для частичного обновления.</p>
+            <p>Вы можете <b>свободно</b> использовать их как угодно, <b>FastAPI</b> не накладывает никаких ограничений.</p>
+            <p>Но в данном руководстве более или менее понятно, как они должны использоваться.</p>
+        </div>
+
+        <h3>Использование параметра <code>exclude_unset</code> в Pydantic</h3>
+        <p>Если необходимо выполнить частичное обновление, то очень полезно использовать параметр
+        <code>exclude_unset</code> в методе <code>.model_dump()</code> модели Pydantic.</p>
+        <p>Например, <code>item.model_dump(exclude_unset=True)</code>.</p>
+        <p>В результате будет сгенерирован словарь, содержащий только те данные, которые были заданы при создании
+        модели <code>item</code>, без учета значений по умолчанию. Затем вы можете использовать это для создания
+        словаря только с теми данными, которые были установлены (отправлены в запросе), опуская значения по умолчанию:</p>
+<pre data-line="45" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.encoders import jsonable_encoder
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class Item(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    price: float | None = None
+    tax: float = 10.5
+    tags: list[str] = []
+
+
+items = {
+    "foo": {"name": "Foo", "price": 50.2},
+    "bar": {"name": "Bar", "description": "The bartenders", "price": 62, "tax": 20.2},
+    "baz": {"name": "Baz", "description": None, "price": 50.2, "tax": 10.5, "tags": []},
+}
+
+
+@app.get("/items/{item_id}", response_model=Item)
+async def read_item(item_id: str):
+    return items[item_id]
+
+
+@app.patch("/items/{item_id}", response_model=Item)
+async def update_item(item_id: str, item: Item):
+    stored_item_data = items[item_id]
+    stored_item_model = Item(**stored_item_data)
+    update_data = item.model_dump(exclude_unset=True)
+    updated_item = stored_item_model.model_copy(update=update_data)
+    items[item_id] = jsonable_encoder(updated_item)
+    return updated_item
+</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/bar">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">name:</label>
+            <label slot="labels">description:</label>
+            <label slot="labels">price:</label>
+            <label slot="labels">tax:</label>
+            <label slot="labels">tags:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/bar">
+            <input slot="inputs" type="text" name="method" value="PATCH">
+            <input slot="inputs" type="text" name="name" value="Barz">
+            <input slot="inputs" type="text" name="description">
+            <input slot="inputs" type="text" name="price" value="3">
+            <input slot="inputs" type="text" name="tax">
+            <input slot="inputs" type="text" name="tags">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h3>Использование параметра <code>update</code> в Pydantic</h3>
+        <p>Теперь можно создать копию существующей модели, используя <code>model_copy()</code>, и передать параметр
+        <code>update</code> с <code>dict</code>, содержащим данные для обновления.</p>
+        <p>Например, <code>stored_item_model.model_copy(update=update_data)</code>:</p>
+<pre data-line="46" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.encoders import jsonable_encoder
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class Item(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    price: float | None = None
+    tax: float = 10.5
+    tags: list[str] = []
+
+
+items = {
+    "foo": {"name": "Foo", "price": 50.2},
+    "bar": {"name": "Bar", "description": "The bartenders", "price": 62, "tax": 20.2},
+    "baz": {"name": "Baz", "description": None, "price": 50.2, "tax": 10.5, "tags": []},
+}
+
+
+@app.get("/items/{item_id}", response_model=Item)
+async def read_item(item_id: str):
+    return items[item_id]
+
+
+@app.patch("/items/{item_id}", response_model=Item)
+async def update_item(item_id: str, item: Item):
+    stored_item_data = items[item_id]
+    stored_item_model = Item(**stored_item_data)
+    update_data = item.model_dump(exclude_unset=True)
+    updated_item = stored_item_model.model_copy(update=update_data)
+    items[item_id] = jsonable_encoder(updated_item)
+    return updated_item
+</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/bar">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">name:</label>
+            <label slot="labels">description:</label>
+            <label slot="labels">price:</label>
+            <label slot="labels">tax:</label>
+            <label slot="labels">tags:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/bar">
+            <input slot="inputs" type="text" name="method" value="PATCH">
+            <input slot="inputs" type="text" name="name" value="Barz">
+            <input slot="inputs" type="text" name="description">
+            <input slot="inputs" type="text" name="price" value="3">
+            <input slot="inputs" type="text" name="tax">
+            <input slot="inputs" type="text" name="tags">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h3>Кратко о частичном обновлении</h3>
+        <p>В целом, для применения частичных обновлений необходимо:</p>
+        <ul>
+            <li>
+                <p>(Опционально) использовать <code>PATCH</code> вместо <code>PUT</code>.</p>
+            </li>
+            <li>
+                <p>Извлечь сохраненные данные.</p>
+            </li>
+            <li>
+                <p>Поместить эти данные в Pydantic модель.</p>
+            </li>
+            <li>
+                <p>Сгенерировать <code>dict</code> без значений по умолчанию из входной модели (с использованием
+                <code>exclude_unset</code>).</p>
+                <ul>
+                    <li>
+                        <p>Таким образом, можно обновлять только те значения, которые действительно установлены
+                        пользователем, вместо того чтобы переопределять значения, уже сохраненные в модели по умолчанию.</p>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <p>Создать копию хранимой модели, обновив ее атрибуты полученными частичными обновлениями (с помощью
+                параметра <code>update</code>).</p>
+            </li>
+            <li>
+                <p>Преобразовать скопированную модель в то, что может быть сохранено в вашей БД (например,
+                с помощью <code>jsonable_encoder</code>).</p>
+                <ul>
+                    <li>
+                        <p>Это сравнимо с повторным использованием метода модели <code>.model_dump()</code>, но
+                        при этом происходит проверка (и преобразование) значений в типы данных, которые могут
+                        быть преобразованы в JSON, например, <code>datetime</code> в <code>str</code>.</p>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <p>Сохранить данные в своей БД.</p>
+            </li>
+            <li>
+                <p>Вернуть обновленную модель.</p>
+            </li>
+        </ul>
+<pre data-line="41-48" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.encoders import jsonable_encoder
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class Item(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    price: float | None = None
+    tax: float = 10.5
+    tags: list[str] = []
+
+
+items = {
+    "foo": {"name": "Foo", "price": 50.2},
+    "bar": {"name": "Bar", "description": "The bartenders", "price": 62, "tax": 20.2},
+    "baz": {"name": "Baz", "description": None, "price": 50.2, "tax": 10.5, "tags": []},
+}
+
+
+@app.get("/items/{item_id}", response_model=Item)
+async def read_item(item_id: str):
+    return items[item_id]
+
+
+@app.patch("/items/{item_id}", response_model=Item)
+async def update_item(item_id: str, item: Item):
+    stored_item_data = items[item_id]
+    stored_item_model = Item(**stored_item_data)
+    update_data = item.model_dump(exclude_unset=True)
+    updated_item = stored_item_model.model_copy(update=update_data)
+    items[item_id] = jsonable_encoder(updated_item)
+    return updated_item
+</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/bar">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">name:</label>
+            <label slot="labels">description:</label>
+            <label slot="labels">price:</label>
+            <label slot="labels">tax:</label>
+            <label slot="labels">tags:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/bar">
+            <input slot="inputs" type="text" name="method" value="PATCH">
+            <input slot="inputs" type="text" name="name" value="Barz">
+            <input slot="inputs" type="text" name="description">
+            <input slot="inputs" type="text" name="price" value="3">
+            <input slot="inputs" type="text" name="tax">
+            <input slot="inputs" type="text" name="tags">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Эту же технику можно использовать и для операции HTTP <code>PUT</code>.</p>
+            <p>Но в приведенном примере используется <code>PATCH</code>, поскольку он был создан именно для таких
+            случаев использования.</p>
+        </div>
+        <div class="admonition note">
+            <h3>Технические детали</h3>
+            <p>Обратите внимание, что входная модель по-прежнему валидируется.</p>
+            <p>Таким образом, если вы хотите получать частичные обновления, в которых могут быть опущены все атрибуты,
+            вам необходимо иметь модель, в которой все атрибуты помечены как необязательные (со значениями по умолчанию
+            или <code>None</code>).</p>
+            <p>Чтобы отличить модели со всеми необязательными значениями для <b>обновления</b> от моделей с обязательными
+            значениями для <b>создания</b>, можно воспользоваться идеями, описанными в
+            <a target="_blank" href="../18.%20Дополнительные%20модели/index.html">Дополнительные модели</a>.</p>
+        </div>
+    </article>
+</body>
+</html>
