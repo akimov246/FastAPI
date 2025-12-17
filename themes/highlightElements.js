@@ -1,12 +1,14 @@
 'use strict';
 
+let currentFolderPath = document.querySelector('script').src.replace('highlightElements.js', '');
+
 const prismStyle = document.createElement('link');
-prismStyle.href = '../../themes/prism.css';
+prismStyle.href = currentFolderPath + 'prism.css';
 prismStyle.rel = 'stylesheet';
 document.head.append(prismStyle);
 
 const prismScript = document.createElement('script');
-prismScript.src = '../../themes/prism.js';
+prismScript.src = currentFolderPath + 'prism.js';
 document.head.append(prismScript);
 
 

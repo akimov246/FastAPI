@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Зависимости</title>
+    <link href="../../../themes/style.css" rel="stylesheet">
+    <script defer src="../../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Зависимости</h1>
+        <p><b>FastAPI</b> имеет очень мощную, но интуитивную систему
+        <abbr title="Также известно как: компоненты, ресурсы, провайдеры, сервисы, внедряемые зависимости"><b>Инъекция зависимостей</b></abbr>.</p>
+        <p>Она спроектирована так, чтобы быть очень простой в использовании и облегчать любому разработчику интеграцию
+        других компонентов с <b>FastAPI</b>.</p>
+
+        <h2>Что такое инъекция зависимостей («Dependency Injection»)</h2>
+        <p>В программировании <b>«Dependency Injection»</b> означает, что у вашего кода (в данном случае у ваших
+        <i>функций обработки пути</i>) есть способ объявить вещи, которые требуются для его работы и использования:
+        «зависимости».</p>
+        <p>И затем эта система (в нашем случае <b>FastAPI</b>) позаботится о том, чтобы сделать все необходимое
+        для предоставления вашему коду этих зависимостей (сделать «инъекцию» зависимостей).</p>
+        <p>Это очень полезно, когда вам нужно:</p>
+        <ul>
+            <li>
+                <p>Обеспечить общую логику (один и тот же алгоритм снова и снова).</p>
+            </li>
+            <li>
+                <p>Разделять соединения с базой данных.</p>
+            </li>
+            <li>
+                <p>Обеспечить безопасность, аутентификацию, требования к ролям и т.п.</p>
+            </li>
+            <li>
+                <p>И многое другое...</p>
+            </li>
+        </ul>
+        <p>Все это при минимизации повторения кода.</p>
+
+        <h2>Первые шаги</h2>
+        <p>Давайте рассмотрим очень простой пример. Он настолько простой, что пока не очень полезен.</p>
+        <p>Но так мы сможем сосредоточиться на том, как работает система <b>Dependency Injection</b>.</p>
+
+        <h3>Создайте зависимости, или «dependable» (от чего что-то зависит)</h3>
+        <p>Сначала сосредоточимся на зависимости.</p>
+        <p>Это просто функция, которая может принимать те же аргументы, что и <i>функция обработки пути</i>:</p>
+<pre data-line="21-22" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+async def common_parameters(q: str | None = None, skip: int = 0, limit: int = 100):
+    return {"q": q, "skip": skip, "limit": limit}
+
+
+@app.get("/items")
+async def read_items(commons: Annotated[dict, Depends(common_parameters)]):
+    return commons
+
+
+@app.get("/users")
+async def read_users(commons: Annotated[dict, Depends(common_parameters)]):
+    return commons</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items?q=item&skip=14&limit=88">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/users?q=user&skip=3&limit=22">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>И все.</p>
+        <p><b>2 строки.</b></p>
+        <p>И она имеет ту же форму и структуру, что и все ваши <i>функции обработки пути</i>.</p>
+        <p>Можно думать о ней как о <i>функции обработки пути</i> без «декоратора» (без
+        <code>@app.get("/some-path")</code>).</p>
+        <p>И она может возвращать что угодно.</p>
+        <p>В этом случае эта зависимость ожидает:</p>
+        <ul>
+            <li>
+                <p>Необязательный query-параметр <code>q</code> типа <code>str</code>.</p>
+            </li>
+            <li>
+                <p>Необязательный query-параметр <code>skip</code> типа <code>int</code>, по умолчанию <code>0</code>.</p>
+            </li>
+            <li>
+                <p>Необязательный query-параметр <code>limit</code> типа <code>int</code>, по умолчанию <code>100</code>.</p>
+            </li>
+        </ul>
+        <p>А затем просто возвращает <code>dict</code>, содержащий эти значения.</p>
+
+        <h3>Импорт <code>Depends</code></h3>
+<pre data-line="3" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+async def common_parameters(q: str | None = None, skip: int = 0, limit: int = 100):
+    return {"q": q, "skip": skip, "limit": limit}
+
+
+@app.get("/items")
+async def read_items(commons: Annotated[dict, Depends(common_parameters)]):
+    return commons
+
+
+@app.get("/users")
+async def read_users(commons: Annotated[dict, Depends(common_parameters)]):
+    return commons</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items?q=item&skip=14&limit=88">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/users?q=user&skip=3&limit=22">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h3>Объявите зависимость в «зависимом»</h3>
+        <p>Точно так же, как вы используете <code>Body</code>, <code>Query</code> и т.д. с параметрами вашей
+        <i>функции обработки пути</i>, используйте <code>Depends</code> с новым параметром:</p>
+<pre data-line="26, 31" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+async def common_parameters(q: str | None = None, skip: int = 0, limit: int = 100):
+    return {"q": q, "skip": skip, "limit": limit}
+
+
+@app.get("/items")
+async def read_items(commons: Annotated[dict, Depends(common_parameters)]):
+    return commons
+
+
+@app.get("/users")
+async def read_users(commons: Annotated[dict, Depends(common_parameters)]):
+    return commons</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items?q=item&skip=14&limit=88">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/users?q=user&skip=3&limit=22">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Хотя вы используете <code>Depends</code> в параметрах вашей функции так же, как <code>Body</code>,
+        <code>Query</code> и т.д., <code>Depends</code> работает немного иначе.</p>
+        <p>В <code>Depends</code> вы передаете только один параметр.</p>
+        <p>Это параметр должен быть чем-то вроде функции.</p>
+        <p>Вы <b>не вызываете ее</b> напрямую (не добавляйте круглые скобки в конце), просто передаете ее как параметр
+        в <code>Depends()</code>.</p>
+        <p>И эта функция принимает параметры так же, как <i>функции обработки пути</i>.</p>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>В следующей главе вы увидите, как еще «вещи», помимо функций, можно использовать в качестве зависимостей.</p>
+        </div>
+        <p>Каждый раз, когда приходит новый запрос, <b>FastAPI</b> позаботится о:</p>
+        <ul>
+            <li>
+                <p>Вызове вашей зависимости («dependable») с корректными параметрами.</p>
+            </li>
+            <li>
+                <p>Получении результата из вашей функции.</p>
+            </li>
+            <li>
+                <p>Присваивании этого результата параметру в вашей <i>функции обработки пути</i>.</p>
+            </li>
+        </ul>
+        <img src="images/common_parameters.svg" style="display: block">
+        <p>Таким образом, вы пишите общий код один раз, в <b>FastAPI</b> позаботится о его вызове для ваших
+        <i>операций пути</i>.</p>
+        <div class="admonition note">
+            <h3>Проверка</h3>
+            <p>Обратите внимание, что вам не нужно создавать специальный класс и передавать его куда-то в <b>FastAPI</b>,
+            чтобы «зарегистрировать» его или что-то подобное.</p>
+            <p>Вы просто передаете его в <code>Depends</code>, и <b>FastAPI</b> знает, что делать дальше.</p>
+        </div>
+
+        <h2>Использование зависимости с <code>Annotated</code> в нескольких местах</h2>
+        <p>В приведенных выше примерах есть небольшое <b>повторение кода</b>.</p>
+        <p>Когда вам нужно использовать зависимость <code>common_parameters()</code>, вы должны написать весь
+        параметр с аннотацией типа и <code>Depends()</code>:</p>
+        <pre><code class="language-python">commons: Annotated[dict, Depends(common_parameters)]</code></pre>
+        <p>Но поскольку мы используем <code>Annotated</code>, мы можем сохранить это значение <code>Annotated</code>
+        в переменную и использовать его в нескольких местах:</p>
+<pre data-line="25, 29, 34" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+async def common_parameters(q: str | None = None, skip: int = 0, limit: int = 100):
+    return {"q": q, "skip": skip, "limit": limit}
+
+
+CommonsDep = Annotated[dict, Depends(common_parameters)]
+
+
+@app.get("/items")
+async def read_items(commons: CommonsDep):
+    return commons
+
+
+@app.get("/users")
+async def read_users(commons: CommonsDep):
+    return commons</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items?q=item&skip=14&limit=88">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/users?q=user&skip=3&limit=22">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Это стандартный Python, это называется «type alias», и это не особенность <b>FastAPI</b>.</p>
+            <p>Но поскольку <b>FastAPI</b> основан на стандартах Python, включая <code>Annotated</code>, вы можете
+            использовать этот трюк в своем коде.</p>
+        </div>
+        <p>Зависимости продолжат работать как ожидалось, и <b>лучшая часть</b> в том, что <b>информация о типах
+        будет сохранена</b>, а значит, ваш редактор кода продолжит предоставлять <b>автозавершение</b>,
+        <b>встроенные ошибки</b> и т.д. То же относится и к другим инструментам, таким как <code>mypy</code>.</p>
+        <p>Это особенно полезно, когда вы используете это в <b>большой кодовой базе</b>, где вы используете
+        <b>одни и те же зависимости</b> снова и снова во <b>многих <i>операциях пути</i></b>.</p>
+
+        <h2>Использовать <code>async</code> или не <code>async</code></h2>
+        <p>Поскольку зависимости также вызываются <b>FastAPI</b> (как и ваши <i>функции обработки пути</i>),
+        применяются те же правила при определении ваших функций.</p>
+        <p>Вы можете использовать <code>async def</code> или обычное <code>def</code>.</p>
+        <p>И вы можете объявлять зависимости с <code>async def</code> внутри обычных <i>функций обработки пути</i>
+        <code>def</code>, или зависимости <code>def</code> внутри <i>функций обработки пути</i> <code>async def</code>
+        и т.д.</p>
+        <p>Это не важно. <b>FastAPI</b> знает, что делать.</p>
+
+        <h2>Интеграция с OpenAPI</h2>
+        <p>Все объявления запросов, проверки и требования ваших зависимостей (и подзависимостей) будут интегрированы
+        в ту же схему OpenAPI.</p>
+        <p>Поэтому в интерактивной документации будет вся информация и из этих зависимостей:
+        <a target="_blank" href="http://127.0.0.1:8000/docs">http://127.0.0.1:8000/docs</a>.</p>
+
+        <h2>Простое использование</h2>
+        <p>Если посмотреть, <i>функции обработки пути</i> объявляются для использования всякий раз, когда
+        <i>путь</i> и <i>операция</i> совпадают, и тогда <b>FastAPI</b> заботится о вызове функции с корректными
+        параметрами, извлекая данные из запроса.</p>
+        <p>На самом деле все (или большинство) веб-фреймворков работают таким же образом.</p>
+        <p>Вы никогда не вызываете эти функции напрямую. Их вызывает ваш фреймворк (в нашем случае <b>FastAPI</b>).</p>
+        <p>С системой <b>Dependency Injection</b> вы также можете сообщить <b>FastAPI</b>, что ваша
+        <i>функция обработки пути</i> «зависит» от чего-то, что должно быть выполнено перед вашей
+        <i>функцией обработки пути</i>, и <b>FastAPI</b> позаботится о его выполнении и «инъекции» результатов.</p>
+        <p>Другие распространенные термины для описания той же идеи «dependency injection»:</p>
+        <ul>
+            <li>
+                <p>Ресурсы</p>
+            </li>
+            <li>
+                <p>Провайдеры</p>
+            </li>
+            <li>
+                <p>Сервисы</p>
+            </li>
+            <li>
+                <p>Внедряемые зависимости</p>
+            </li>
+            <li>
+                <p>Компоненты</p>
+            </li>
+        </ul>
+
+        <h2>Плагины FastAPI</h2>
+        <p>Интеграции и «плагины» могут быть построены с использованием системы <b>Dependency Injection</b>.
+        Но на самом деле <b>нет необходимости создавать «плагины»</b>, так как, используя зависимости, можно
+        объявить бесконечное количество интеграций и взаимодействий, которые становятся доступными вашим
+        <i>функциям обработки пути</i>.</p>
+        <p>И зависимости можно создавать очень простым и интуитивным способом, который позволяет просто импортировать
+        нужные пакеты Python и интегрировать их с вашими API-функциями в пару строк кода, <i>буквально</i>.</p>
+        <p>Вы увидите примеры этого в следующих главах о реляционных и NoSQL базах данных, безопасности и т.д.</p>
+
+        <h2>Совместимость с FastAPI</h2>
+        <p>Простота системы <b>Dependency Injection</b> делает <b>FastAPI</b> совместимым с:</p>
+        <ul>
+            <li>
+                <p>Всеми реляционными базами данных</p>
+            </li>
+            <li>
+                <p>NoSQL базами данных</p>
+            </li>
+            <li>
+                <p>Внешними пакетами</p>
+            </li>
+            <li>
+                <p>Внешними API</p>
+            </li>
+            <li>
+                <p>Системами аутентификации и авторизации</p>
+            </li>
+            <li>
+                <p>Системами мониторинга использования API</p>
+            </li>
+            <li>
+                <p>Системами инъекции данных в ответы</p>
+            </li>
+            <li>
+                <p>И т.д.</p>
+            </li>
+        </ul>
+
+        <h2>Просто и мощно</h2>
+        <p>Хотя иерархическая система dependency injection очень проста для определения и использования,
+        на по-прежнему очень мощная.</p>
+        <p>Вы можете определять зависимости, которые, в свою очередь, могут иметь собственные зависимости.</p>
+        <p>В итоге строится иерархическое дерево зависимостей, и система <b>Dependency Injection</b> берет на себя
+        решение всех этих зависимостей (и их подзависимостей) и предоставляет (инъектирует) результаты на каждом шаге.</p>
+        <p>Например, у вас есть 4 API-эндпоинта (<i>операции пути</i>):</p>
+        <ul>
+            <li>
+                <p><code>/items/public</code></p>
+            </li>
+            <li>
+                <p><code>/items/private</code></p>
+            </li>
+            <li>
+                <p><code>/users/{user_id}/activate</code></p>
+            </li>
+            <li>
+                <p><code>/items/pro</code></p>
+            </li>
+        </ul>
+        <p>Тогда вы можете добавить разные требования к правам для каждого из них только с помощью зависимостей
+        и подзависимостей:</p>
+        <img src="images/current_user.svg">
+
+        <h2>Интегрировано с OpenAPI</h2>
+        <p>Все эти зависимости, объявляя свои требования, также добавляют параметры, проверки и т.д. к вашим
+        <i>операциям пути</i>.</p>
+        <p><b>FastAPI</b> позаботится о добавлении всего этого в схему OpenAPI, чтобы это отображалось в системах
+        интерактивной документации.</p>
+    </article>
+</body>
+</html>
