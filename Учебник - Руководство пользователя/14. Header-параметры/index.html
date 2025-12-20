@@ -150,7 +150,7 @@ async def read_items(strange_header: Annotated[str | None, Header(convert_unders
         </request-response-container>
         <script>
             document.currentScript.previousElementSibling.querySelector('button')
-                .dataset.extraHeadersJson = '[{"Strange_Header": "strange_header_value"}]';
+                .dataset.headers = '{"Strange_Header": "strange_header_value"}';
         </script>
         <div class="admonition warning">
             <h3>Внимание</h3>
@@ -200,7 +200,7 @@ async def read_items(x_token: Annotated[list[str] | None, Header()] = None):
         </request-response-container>
         <script>
             document.currentScript.previousElementSibling.querySelector('button')
-                .dataset.extraHeadersJson = '[{"X-Token": "foo, bar"}]';
+                .dataset.headers = '{"X-Token": "foo, bar"}';
         </script>
         <div class="admonition warning">
             <h3>Внимание</h3>

@@ -61,7 +61,7 @@ async def read_items(headers: Annotated[CommonHeaders, Header()]):
         </request-response-container>
         <script>
             document.currentScript.previousElementSibling.querySelector('button')
-                .dataset.extraHeadersJson = `[{"Save-Data": true}, {"If-Modified-Since": "if_modified_since_value"}, {"Traceparent": "traceparent_value"}, {"X-Tag": ["x_tag1", "x_tag2", "x_tag3"]}]`;
+                .dataset.headers = `{"Save-Data": true, "If-Modified-Since": "if_modified_since_value", "Traceparent": "traceparent_value", "X-Tag": ["x_tag1", "x_tag2", "x_tag3"]}`;
         </script>
         <p><b>FastAPI извлечет</b> данные для <b>каждого поля</b> из <b>заголовков</b> запроса и выдаст заданную
         вами Pydantic-модель.</p>
@@ -122,7 +122,7 @@ async def read_items(headers: Annotated[CommonHeadersExtraForbid, Header()]):
         </request-response-container>
         <script>
             document.currentScript.previousElementSibling.querySelector('button')
-                .dataset.extraHeadersJson = `[{"tool": "plumbus"}, {"Save-Data": true}, {"If-Modified-Since": "if_modified_since_value"}, {"Traceparent": "traceparent_value"}, {"X-Tag": ["x_tag1", "x_tag2", "x_tag3"]}]`;
+                .dataset.headers = `{"tool": "plumbus", "Save-Data": true, "If-Modified-Since": "if_modified_since_value", "Traceparent": "traceparent_value", "X-Tag": ["x_tag1", "x_tag2", "x_tag3"]}`;
         </script>
         <p>Если клиент попробует отправить <b>дополнительные заголовки</b>, то в ответ он получит <b>ошибку</b>.</p>
         <p>Например, если клиент попытается отправить заголовок <code>tool</code> со значением <code>plumbus</code>,
@@ -190,7 +190,7 @@ async def read_items(headers: Annotated[CommonHeaders, Header(convert_underscore
         </request-response-container>
         <script>
             document.currentScript.previousElementSibling.querySelector('button')
-                .dataset.extraHeadersJson = `[{"Save_Data": true}, {"If_Modified_Since": "if_modified_since_value"}, {"Traceparent": "traceparent_value"}, {"X_Tag": ["x_tag1", "x_tag2", "x_tag3"]}]`;
+                .dataset.headers = `{"Save_Data": true, "If_Modified_Since": "if_modified_since_value", "Traceparent": "traceparent_value", "X_Tag": ["x_tag1", "x_tag2", "x_tag3"]}`;
         </script>
         <div class="admonition warning">
             <h3>Внимание</h3>

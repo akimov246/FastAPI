@@ -266,10 +266,11 @@ customElements.define('request-response-container', class extends HTMLElement {
                     }
             }
 
-            if (button.dataset.extraHeadersJson) {
-                console.log(JSON.parse(button.dataset.extraHeadersJson))
-                for (let header of JSON.parse(button.dataset.extraHeadersJson)) {
-                    requestInit.headers.append(...Object.entries(header)[0]);
+            if (button.dataset.headers) {
+                for (let header of Object.entries(JSON.parse(button.dataset.headers))) {
+                    let key = header[0];
+                    let value = header[1];
+                    requestInit.headers.append(key, value);
                 }
             }
 
