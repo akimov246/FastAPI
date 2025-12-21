@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Глобальные зависимости</title>
+    <link href="../../../themes/style.css" rel="stylesheet">
+    <script defer src="../../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Глобальные зависимости</h1>
+        <p>Для некоторых типов приложений может потребоваться добавить зависимости ко всему приложению.</p>
+        <p>Подобно тому, как вы можете
+        <a target="_blank" href="../28.4.%20Зависимости%20в%20декораторах%20операции%20пути/index.html">добавлять <code>dependencies</code> (зависимости) в <i>декораторах операции пути</i></a>,
+        вы можете добавлять зависимости сразу ко всему <code>FastAPI</code> приложению.</p>
+        <p>В этом случае они будут применяться ко всем <i>операциям пути</i> в приложении:</p>
+<pre data-line="17" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Depends, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+
+
+async def verify_token(x_token: Annotated[str, Header()]):
+    if x_token != "fake-super-secret-token":
+        raise HTTPException(status_code=400, detail="X-Token header invalid")
+
+
+async def verify_key(x_key: Annotated[str, Header()]):
+    if x_key != "fake-super-secret-key":
+        raise HTTPException(status_code=400, detail="X-Key header invalid")
+    return x_key
+
+app = FastAPI(dependencies=[Depends(verify_token), Depends(verify_key)])
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+@app.get("/items")
+async def read_items():
+    return [{"item": "Portal Gun"}, {"item": "Plumbus"}]
+
+
+@app.get("/users")
+async def read_users():
+    return [{"username": "Rick"}, {"username": "Morty"}]</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons" data-headers='{"X-Token": "fake-super-secret-token", "X-Key": "fake-super-secret-key"}'>Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/users">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons" data-headers='{"X-Token": "fake-super-secret-token", "X-Key": "fake-super-secret-key"}'>Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Все способы
+        <a target="_blank" href="../28.4.%20Зависимости%20в%20декораторах%20операции%20пути/index.html">добавления <code>dependencies</code> (зависимостей) в <i>декораторах операций пути</i></a>
+        по-прежнему применимы, но в данном случае зависимости применяются ко всем <i>операциям пути</i> приложения.</p>
+
+        <h2>Зависимости для групп <i>операций пути</i></h2>
+        <p>Позднее, читая о том, как структурировать более крупные приложения, содержащий много файлов, вы узнаете,
+        как объявить один параметр <code>dependencies</code> для целой группы <i>операций пути</i>.</p>
+    </article>
+</body>
+</html>
