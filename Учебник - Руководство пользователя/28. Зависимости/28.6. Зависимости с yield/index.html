@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Зависимости с yield</title>
+    <link href="../../../themes/style.css" rel="stylesheet">
+    <script defer src="../../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Зависимости с yield</h1>
+        <p>FastAPI поддерживает зависимости, которые выполняют некоторые
+        <abbr title="Иногда также называемые «exit code», «cleanup code», «teardown code», «closing code», «context manager exit code» и т.п.">дополнительные шаги после завершения</abbr>.</p>
+        <p>Для этого используйте <code>yield</code> вместо <code>return</code>, а дополнительные шаги (код) напишите
+        после него.</p>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Убедитесь, что используете <code>yield</code> только один раз на одну зависимость.</p>
+        </div>
+        <div class="admonition note">
+            <h3>Технические детали</h3>
+            <p>Любая функция, с которой можно корректно использовать:</p>
+            <ul>
+                <li>
+                    <p><a target="_blank" href="https://docs.python.org/3/library/contextlib.html#contextlib.contextmanager">@contextlib.contextmanager</a> или</p>
+                </li>
+                <li>
+                    <p><a target="_blank" href="https://docs.python.org/3/library/contextlib.html#contextlib.asynccontextmanager">@contextlib.asynccontextmanager</a></p>
+                </li>
+            </ul>
+            <p>будет корректной для использования в качестве зависимости <b>FastAPI</b>.</p>
+            <p>На самом деле, FastAPI использует эти два декоратора внутренне.</p>
+        </div>
+
+        <h2>Зависимость базы данных с помощью <code>yield</code></h2>
+        <p>Например, с его помощью можно создать сессию работы с базой данных и закрыть ее после завершения.</p>
+        <p>Перед созданием ответа будет выполнен только код до и включая оператор <code>yield</code>:</p>
+<pre data-line="2-4" class="line-numbers"><code class="language-python">async def get_db():
+    db = DBSession()
+    try:
+        yield db
+    finally:
+        db.close()</code></pre>
+        <p>Значение, полученное из <code>yield</code>, внедряется в <i>операции пути</i> и другие зависимости:</p>
+<pre data-line="4" class="line-numbers"><code class="language-python">async def get_db():
+    db = DBSession()
+    try:
+        yield db
+    finally:
+        db.close()</code></pre>
+        <p>Код, следующий за оператором <code>yield</code>, выполняется после ответа:</p>
+<pre data-line="5-6" class="line-numbers"><code class="language-python">async def get_db():
+    db = DBSession()
+    try:
+        yield db
+    finally:
+        db.close()</code></pre>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Можно использовать как <code>async</code>, так и обычные функции.</p>
+            <p><b>FastAPI</b> корректно обрабатывает каждый вариант, так же как и с обычными зависимостями.</p>
+        </div>
+
+        <h2>Зависимости с <code>yield</code> и <code>try</code></h2>
+        <p>Если использовать блок <code>try</code> в зависимости с <code>yield</code>, то вы получите любое исключение,
+        которое было выброшено при использовании зависимости.</p>
+        <p>Например, если какой-то код в какой-то момент в середине, в другой зависимости или <i>операции пути</i>,
+        сделал «откат» транзакции базы данных или создал любую другую ошибку, то вы получите это исключение в своей
+        зависимости.</p>
+        <p>Таким образом, можно искать конкретное исключение внутри зависимости с помощью <code>except SomeException</code>.</p>
+        <p>Точно так же можно использовать <code>finally</code>, чтобы убедиться, что обязательные шаги при выходе
+        выполнены независимо от того, было ли исключение или нет.</p>
+<pre data-line="3, 5" class="line-numbers"><code class="language-python">async def get_db():
+    db = DBSession()
+    try:
+        yield db
+    finally:
+        db.close()</code></pre>
+
+        <h2>Подзависимости с <code>yield</code></h2>
+        <p>Вы можете иметь подзависимости и «деревья» подзависимостей любого размера и формы, и любая из них
+        или все они могут использовать <code>yield</code>.</p>
+        <p><b>FastAPI</b> проследит за тем, чтобы «код выхода» в каждой зависимости с <code>yield</code> выполнялся
+        в правильном порядке.</p>
+        <p>Например, <code>dependency_c</code> может зависеть от <code>dependency_b</code>, а <code>dependency_b</code> -
+        от <code>dependency_a</code>:</p>
+<pre data-line="5, 13, 21" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import Depends
+
+async def dependency_a():
+    dep_a = generate_dep_a()
+    try:
+        yield dep_a
+    finally:
+        dep_a.close()
+
+
+async def dependency_b(dep_a: Annotated[DepA, Depends(dependency_a)]):
+    dep_b = generate_dep_b()
+    try:
+        yield dep_b
+    finally:
+        dep_b.close(dep_a)
+
+
+async def dependency_c(dep_b: Annotated[DepB, Depends(dependency_b)]):
+    dep_c = generate_dep_c()
+    try:
+        yield dep_c
+    finally:
+        dep_c.close(dep_b)</code></pre>
+        <p>И все они могут использовать <code>yield</code>.</p>
+        <p>В этом случае <code>dependency_c</code> для выполнения своего кода выхода нуждается в том, чтобы
+        значение из <code>dependency_b</code> (здесь <code>dep_b</code>) все еще было доступно.</p>
+        <p>И, в свою очередь, <code>dependency_b</code> нуждается в том, чтобы значение из <code>dependency_a</code>
+        (здесь <code>dep_a</code>) было доступно для ее кода выхода.</p>
+<pre data-line="17-18, 25-26" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import Depends
+
+async def dependency_a():
+    dep_a = generate_dep_a()
+    try:
+        yield dep_a
+    finally:
+        dep_a.close()
+
+
+async def dependency_b(dep_a: Annotated[DepA, Depends(dependency_a)]):
+    dep_b = generate_dep_b()
+    try:
+        yield dep_b
+    finally:
+        dep_b.close(dep_a)
+
+
+async def dependency_c(dep_b: Annotated[DepB, Depends(dependency_b)]):
+    dep_c = generate_dep_c()
+    try:
+        yield dep_c
+    finally:
+        dep_c.close(dep_b)</code></pre>
+        <p>Точно так же можно иметь часть зависимостей с <code>yield</code>, часть - с <code>return</code>, и какие-то
+        из них могут зависеть друг от друга.</p>
+        <p>Либо у вас может быть одна зависимость, которая требует несколько других зависимостей с <code>yield</code>
+        и т.д.</p>
+        <p>Комбинации зависимостей могут быть какими угодно.</p>
+        <p><b>FastAPI</b> проследит за тем, чтобы все выполнялось в правильном порядке.</p>
+        <div class="admonition note">
+            <h3>Технические детали</h3>
+            <p>Это работает благодаря
+            <a target="_blank" href="https://docs.python.org/3/library/contextlib.html">менеджерам контекста</a> в
+            Python.</p>
+            <p><b>FastAPI</b> использует их внутренне для достижения этого.</p>
+        </div>
+
+        <h2>Зависимости с <code>yield</code> и <code>HTTPException</code></h2>
+        <p>Вы видели, что можно использовать зависимости с <code>yield</code> и иметь блоки <code>try</code>, которые
+        пытаются выполнить некоторые код, а затем запускают код выхода в <code>finally</code>.</p>
+        <p>Также вы можете использовать <code>except</code>, чтобы поймать вызванное исключение и что-то с ним сделать.</p>
+        <p>Например, вы можете
+        <abbr title="«raise» дословно - «поднять», но «вызвать», «сгенерировать» или «выбросить» употребляется чаще">вызвать</abbr>
+        другое исключение, например <code>HTTPException</code>.</p>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Это довольно продвинутая техника, и в большинстве случаев она вам не понадобится, так как вы можете
+            вызывать исключения (включая <code>HTTPException</code>) в остальном коде вашего приложения, например,
+            в <i>функции-обработчике пути</i>.</p>
+            <p>Но если понадобится - возможность есть.</p>
+        </div>
+<pre data-line="31-35, 44" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+data = {
+    "plumbus": {"description": "Freshly pickled plumbus", "owner": "Morty"},
+    "portal-gun": {"description": "Gun to create portals", "owner": "Rick"},
+}
+
+
+class OwnerError(Exception):
+    pass
+
+
+def get_username():
+    try:
+        yield 'Rick'
+    except OwnerError as e:
+        raise HTTPException(status_code=400, detail=f"Owner error: {e}")
+
+
+@app.get("/items/{item_id}")
+def get_item(item_id: str, username: Annotated[str, Depends(get_username)]):
+    if item_id not in data:
+        raise HTTPException(status_code=404, detail="Item not found")
+    item = data[item_id]
+    if item["owner"] != username:
+        raise OwnerError(username)
+    return item</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/portal-gun">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Если вы хотите перехватить исключения и формировать на их основе пользовательский ответ,
+        создайте
+        <a target="_blank" href="../../24.%20Обработка%20ошибок/index.html">Пользовательский обработчик исключений</a>.</p>
+
+        <h2>Зависимости с <code>yield</code> и <code>except</code></h2>
+        <p>Если вы ловите исключение с помощью <code>except</code> в зависимости с <code>yield</code> и не вызываете
+        его снова (или не вызываете новое исключение), FastAPI не сможет заметить, что было исключение - так же,
+        как это происходит в обычном Python:</p>
+<pre data-line="28-29" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class InternalErrorWithoutRaise(Exception):
+    pass
+
+
+def get_username_without_raise():
+    try:
+        yield 'Rick'
+    except InternalErrorWithoutRaise:
+        print("Oops, we didn't raise again, Britney")
+
+
+@app.get("/items/without_raise/{item_id}")
+def get_item(item_id: str, username: Annotated[str, Depends(get_username_without_raise)]):
+    if item_id == 'portal-gun':
+        raise InternalErrorWithoutRaise(f"The portal gun is too dangerous to be owned by {username}")
+    if item_id != 'plumbus':
+        raise HTTPException(status_code=404, detail="Item not found, there's only a plumbus here")
+    return item_id</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/without_raise/portal-gun">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>В этом случае клиент получит <i>HTTP 500 Internal Server Error</i>, как и должно быть, поскольку мы не
+        вызываем <code>HTTPException</code> или что-то подобное, но на сервере <b>не будет никаких логов</b> или
+        других указаний на то, какая была ошибка.</p>
+
+        <h3>Всегда делайте <code>raise</code> в зависимостях с <code>yield</code> и <code>except</code></h3>
+        <p>Если вы ловите исключение в зависимости с <code>yield</code>, то, если вы не вызываете другой
+        <code>HTTPException</code> или что-то подобное, вам следует повторно вызвать исходное исключение.</p>
+        <p>Вы можете повторно вызвать то же самое исключение с помощью <code>raise</code>:</p>
+<pre data-line="30" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class InternalErrorWithRaise(Exception):
+    pass
+
+
+def get_username_with_raise():
+    try:
+        yield 'Rick'
+    except InternalErrorWithRaise:
+        print("We don't swallow the internal error here, we raise again")
+        raise
+
+
+@app.get("/items/with_raise/{item_id}")
+def get_item(item_id: str, username: Annotated[str, Depends(get_username_with_raise)]):
+    if item_id == 'portal-gun':
+        raise InternalErrorWithRaise(f"The portal gun is too dangerous to be owned by {username}")
+    if item_id != 'plumbus':
+        raise HTTPException(status_code=404, detail="Item not found, there's only a plumbus here")
+    return item_id</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/with_raise/portal-gun">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Теперь клиент получит тот же <i>HTTP 500 Internal Server Error</i>, но на сервере в логах будет наше
+        пользовательское <code>InternalErrorWithRaise</code>.</p>
+        <div class="admonition info">
+            <h3>Дополнительная информация</h3>
+            <p>Клиенту будет отправлен только <b>один ответ</b>. Это может быть один из ответов об ошибке или ответ
+            от <i>операции пути</i>.</p>
+            <p>После отправки одного из этих ответов никакой другой ответ отправить нельзя.</p>
+        </div>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Если вы вызовите какое-либо исключение в коде из <i>функции-обработчика пути</i>, оно будет передано
+            зависимостям с <code>yield</code>, включая <code>HTTPException</code>. В большинстве случаев вы захотите
+            повторно вызвать то же самое исключение или новое из зависимости с <code>yield</code>, чтобы убедиться,
+            что оно корректно обработано.</p>
+        </div>
+
+        <h2>Контекстные менеджеры</h2>
+
+        <h3>Что такое «контекстные менеджеры»</h3>
+        <p>«Контекстные менеджеры» - это любые объекты Python, которые можно использовать в операторе <code>with</code>.</p>
+        <p>Например, <a target="_blank" href="https://docs.python.org/3/tutorial/inputoutput.html#reading-and-writing-files">можно использовать <code>with</code> для чтения файла</a>:</p>
+<pre data-line="" class="line-numbers"><code class="language-python">with open("./somefile.txt") as f:
+    contents = f.read()
+    print(contents)</code></pre>
+        <p>Под капотом вызов <code>open("./somefile.txt")</code> создает объект, называемый «контекстным менеджером».</p>
+        <p>Когда блок <code>with</code> завершается, он обязательно закрывает файл, даже если были исключения.</p>
+        <p>Когда вы создаете зависимость с <code>yield</code>, <b>FastAPI</b> внутренне создает для нее менеджер
+        контекста и сочетает его с некоторыми другими связанными инструментами.</p>
+
+        <h3>Использование менеджеров контекста в зависимостях с <code>yield</code></h3>
+        <p>В Python можно создавать менеджеры контекста,
+        <a target="_blank" href="https://docs.python.org/3/reference/datamodel.html#context-managers">создав класс с двумя методами: <code>__enter__()</code> и <code>__exit__()</code></a>.</p>
+        <p>Их также можно использовать внутри зависимостей <b>FastAPI</b> с <code>yield</code>, применяя
+        операторы <code>with</code> или <code>async with</code> внутри функции зависимости:</p>
+<pre data-line="1-9, 13" class="line-numbers"><code class="language-python">class MySuperContextManager:
+    def __init__(self):
+        self.db = DBSession()
+
+    def __enter__(self):
+        return self.db
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.db.close()
+
+
+async def get_db():
+    with MySuperContextManager() as db:
+        yield db</code></pre>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Другой способ создания менеджера контекста - с помощью:</p>
+            <ul>
+                <li>
+                    <p><a target="_blank" href="https://docs.python.org/3/library/contextlib.html#contextlib.contextmanager">@contextlib.contextmanager</a> или</p>
+                </li>
+                <li>
+                    <p><a target="_blank" href="https://docs.python.org/3/library/contextlib.html#contextlib.asynccontextmanager">@contextlib.asynccontextmanager</a></p>
+                </li>
+            </ul>
+            <p>Оформив ими функцию с одним <code>yield</code>.</p>
+            <p>Именно это <b>FastAPI</b> использует внутренне для зависимостей с <code>yield</code>.</p>
+            <p>Но использовать эти декораторы для зависимостей FastAPI не обязательно (и не стоит).</p>
+            <p>FastAPI сделает это за вас на внутреннем уровне.</p>
+        </div>
+    </article>
+</body>
+</html>
