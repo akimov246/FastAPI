@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Безопасность - первые шаги</title>
+    <link href="../../../themes/style.css" rel="stylesheet">
+    <script defer src="../../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Безопасность - первые шаги</h1>
+        <p>Представим, что у вас есть <b>бэкенд</b> API на некотором домене.</p>
+        <p>И у вас есть <b>фронтенд</b> на другом домене или на другом пути того же домена (или в мобильном приложении).</p>
+        <p>И вы хотите, чтобы фронтенд мог аутентифицироваться на бэкенде, используя <b>имя пользователя</b>
+        и <b>пароль</b>.</p>
+        <p>Мы можем использовать <b>OAuth2</b>, чтобы построить это с <b>FastAPI</b>.</p>
+        <p>Но давайте сэкономим вам время на чтение всей длинной спецификации в поисках тех небольших фрагментов
+        информации, которые вам нужны.</p>
+        <p>Воспользуемся инструментами, предоставленными <b>FastAPI</b>, чтобы работать с безопасностью.</p>
+
+        <h2>Как это выглядит</h2>
+        <p>Сначала просто воспользуемся кодом и посмотрим, как он работает, а затем вернемся и разберемся, что происходит.</p>
+
+        <h2>Создание <code>main.py</code></h2>
+        <p>Скопируйте пример в файл <code>main.py</code>:</p>
+<pre class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import Depends, FastAPI
+from fastapi.security import OAuth2PasswordBearer
+
+app = FastAPI()
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+@app.get("/items")
+async def read_items(token: Annotated[str, Depends(oauth2_scheme)]):
+    return {"token": token}</code></pre>
+
+        <h2>Запуск</h2>
+        <div class="admonition info">
+            <h3>Дополнительная информация</h3>
+            <p>Пакет <a target="_blank" href="https://github.com/Kludex/python-multipart">python-multipart</a>
+            автоматически устанавливается вместе с <b>FastAPI</b>, если вы запускаете команду
+            <code>pip install "fastapi[standard]"</code>.</p>
+            <p>Однако, если вы используете команду <code>pip install fastapi</code>, пакет <code>python-multipart</code>
+            по умолчанию не включается.</p>
+            <p>Чтобы установить его вручную, убедитесь, что вы создали виртуальное окружение, активировали его
+            и затем установили пакет:</p>
+            <pre><code class="language-bash">$ pip install python-multipart</code></pre>
+            <p>Это связано с тем, что <b>OAuth2</b> использует «данные формы» для отправки <code>username</code> и
+            <code>password</code>.</p>
+        </div>
+        <p>Запустите пример командой:</p>
+        <pre><code class="language-bash">$ fastapi dev main.py</code></pre>
+
+        <h2>Проверка</h2>
+        <p>Перейдите к интерактивной документации по адресу:
+        <a target="_blank" href="http://127.0.0.1:8000/docs">http://127.0.0.1:8000/docs</a>.</p>
+        <div class="admonition note">
+            <h3>Кнопка авторизации!</h3>
+            <p>У вас уже появилась новая кнопка «Authorize».</p>
+            <p>А у вашей <i>операции пути</i> в правом верхнем углу есть маленький замочек, на который можно нажать.</p>
+        </div>
+        <p>Если нажать на нее, появится небольшая форма авторизации, в которую нужно ввести <code>username</code>
+        и <code>password</code> (и другие необязательные поля).</p>
+        <div class="admonition note">
+            <h3>Примечание</h3>
+            <p>Неважно, что вы введете в форму - пока это не будет работать. Но мы скоро до этого дойдем.</p>
+        </div>
+        <p>Конечно, это не фронтенд для конечных пользователей, но это отличный автоматический инструмент для
+        интерактивного документирования всего вашего API.</p>
+        <p>Им может пользоваться команда фронтенда (которой можете быть и вы сами).</p>
+        <p>Им могут пользоваться сторонние приложения и системы.</p>
+        <p>И им также можете пользоваться вы сами, чтобы отлаживать, проверять и тестировать то же самое приложение.</p>
+
+        <h2>«<code>password</code> flow» (аутентификация по паролю)</h2>
+    </article>
+</body>
+</html>
