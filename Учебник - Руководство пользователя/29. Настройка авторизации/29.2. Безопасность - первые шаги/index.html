@@ -75,6 +75,166 @@ async def read_items(token: Annotated[str, Depends(oauth2_scheme)]):
         <p>И им также можете пользоваться вы сами, чтобы отлаживать, проверять и тестировать то же самое приложение.</p>
 
         <h2>«<code>password</code> flow» (аутентификация по паролю)</h2>
+        <p>Теперь давайте немного вернемся и разберемся, что это все такое.</p>
+        <p>«<code>password</code> flow» - это один из способов («flows»), определенных в OAuth2, для обеспечения безопасности
+        и аутентификации.</p>
+        <p>OAuth2 был спроектирован так, чтобы бэкенд или API были независимы от сервера, который аутентифицирует
+        пользователя.</p>
+        <p>Но в нашем случае одно и то же приложение <b>FastAPI</b> будет работать и с API, и с аутентификацией.</p>
+        <p>Итак, рассмотрим это с упрощенной точки зрения:</p>
+        <ul>
+            <li>
+                <p>Пользователь вводит на фронтенде <code>username</code> и <code>password</code> и нажимает
+                <code>Enter</code>.</p>
+            </li>
+            <li>
+                <p>Фронтенд (работающий в браузере пользователя) отправляет эти <code>username</code> и <code>password</code>
+                на конкретный URL в вашем API (объявленный с <code>tokenUrl="token"</code>).</p>
+            </li>
+            <li>
+                <p>API проверяет этот <code>username</code> и <code>password</code> и отвечает «токеном» (мы еще
+                ничего из этого не реализовали).</p>
+                <ul>
+                    <li>
+                        <p>«Токен» - это просто строка с некоторым содержимым, которое мы сможем позже использовать
+                        для проверки этого пользователя.</p>
+                    </li>
+                    <li>
+                        <p>Обычно у токена установлен строк действия: он истекает через некоторое время.</p>
+                        <ul>
+                            <li>
+                                <p>Поэтому пользователю придется снова войти в систему в какой-то момент.</p>
+                            </li>
+                            <li>
+                                <p>И если токен украдут, риск меньше: это не постоянный ключ, который будет работать
+                                вечно (в большинстве случаев).</p>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <p>Фронтенд временно где-то хранит этот токен.</p>
+            </li>
+            <li>
+                <p>Пользователь кликает во фронтенде, чтобы перейти в другой раздел веб-приложения.</p>
+            </li>
+            <li>
+                <p>Фронтенду нужно получить дополнительные данные из API.</p>
+                <ul>
+                    <li>
+                        <p>Но для этого для конкретной конечной точки нужна аутентификация.</p>
+                    </li>
+                    <li>
+                        <p>Поэтому, чтобы аутентифицироваться в нашем API, он отправляет HTTP-заголовок
+                        <code>Authorize</code> со значением <code>Bearer</code> плюс сам токен.</p>
+                    </li>
+                    <li>
+                        <p>Если токен содержит <code>foobar</code>, то содержимое заголовка <code>Authorize</code>
+                        будет: <code>Bearer foobar</code>.</p>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+
+        <h2>Класс <code>OAuth2PasswordBearer</code> в FastAPI</h2>
+        <p><b>FastAPI</b> предоставляет несколько средств на разных уровнях абстракции для реализации этих
+        функций безопасности.</p>
+        <p>В этом примере мы будем использовать <b>OAuth2</b>, с потоком <b>Password</b>, используя токен <b>Bearer</b>.
+        Для этого мы используем класс <code>OAuth2PasswordBearer</code>.</p>
+        <div class="admonition info">
+            <h3>Дополнительная информация</h3>
+            <p>Токен «bearer» - не единственный вариант.</p>
+            <p>Но для нашего случая он - лучший.</p>
+            <p>И он может быть лучшим для большинства случаев использования, если только вы не являетесь экспертом
+            по OAuth2 и точно знаете, почему другой вариант лучше подходит под ваши нужды.</p>
+            <p>В этом случае <b>FastAPI</b> также предоставляет инструменты, чтобы его реализовать.</p>
+        </div>
+        <p>При создании экземпляра класса <code>OAuth2PasswordBearer</code> мы передаем параметр <code>tokenUrl</code>.
+        Этот параметр содержит URL, который клиент (фронтенд, работающий в браузере пользователя) будет использовать
+        для отправки <code>username</code> и <code>password</code>, чтобы получить токен:</p>
+<pre data-line="8" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import Depends, FastAPI
+from fastapi.security import OAuth2PasswordBearer
+
+app = FastAPI()
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+@app.get("/items")
+async def read_items(token: Annotated[str, Depends(oauth2_scheme)]):
+    return {"token": token}</code></pre>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Здесь <code>tokenUrl="token"</code> ссылается на относительный URL <code>token</code>, который мы еще
+            не создали. Поскольку это относительный URL, он эквивалентен <code>./token</code>.</p>
+            <p>Поскольку мы используем относительный URL, если ваш API расположен по адресу <code>https://example.com/</code>,
+            то он будет ссылаться на <code>https://example.com/token</code>. А если ваш API расположен по адресу
+            <code>https://example.com/api/v1</code>, то он будет ссылаться на <code>https://example.com/api/v1/token</code>.</p>
+            <p>Использование относительного URL важно для того, чтобы ваше приложение продолжало работать даже в
+            таком продвинутом случае, как
+            <a target="_blank" href="https://fastapi.tiangolo.com/ru/advanced/behind-a-proxy/">за прокси-сервером</a>.</p>
+        </div>
+        <p>Этот параметр не создает конечную точку / <i>операцию пути</i>, а объявляет, что URL <code>/token</code> - это
+        тот, который клиент должен использовать для получения токена. Эта информация используется в OpenAPI, а затем
+        в интерактивных системах документации по API.</p>
+        <p>Скоро мы также создадим и саму операцию пути.</p>
+        <div class="admonition info">
+            <h3>Дополнительная информация</h3>
+            <p>Если вы очень строгий «питонист», вам может не понравиться стиль имени параметра <code>tokenUrl</code>
+            вместо <code>token_url</code>.</p>
+            <p>Это потому, что используется то же имя, что и в спецификации OpenAPI. Так, если вам нужно разобраться
+            подробнее в какой-то из этих схем безопасности, вы можете просто скопировать и вставить это имя,
+            чтобы найти больше информации.</p>
+        </div>
+        <p>Переменная <code>oauth2_scheme</code> - это экземпляр <code>OAuth2PasswordBearer</code>, но она также
+        «вызываемая».</p>
+        <p>Ее можно вызвать так:</p>
+        <pre><code class="language-python">oauth2_scheme(some, parameters)</code></pre>
+        <p>Поэтому ее можно использовать вместе с <code>Depends</code>.</p>
+
+        <h3>Использование</h3>
+        <p>Теперь вы можете передать <code>oauth2_scheme</code> как зависимость с <code>Depends</code>.</p>
+<pre data-line="12" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import Depends, FastAPI
+from fastapi.security import OAuth2PasswordBearer
+
+app = FastAPI()
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+@app.get("/items")
+async def read_items(token: Annotated[str, Depends(oauth2_scheme)]):
+    return {"token": token}</code></pre>
+        <p>Эта зависимость предоставит <code>str</code>, который будет присвоен параметру <code>token</code>
+        <i>функции-обработчика пути</i>.</p>
+        <p><b>FastAPI</b> будет знать, что может использовать эту зависимость для определения «схемы безопасности»
+        в схеме OpenAPI (и в автоматической документации по API).</p>
+        <div class="admonition info">
+            <h3>Технические детали</h3>
+            <p><b>FastAPI</b> будет знать, что может использовать класс <code>OAuth2PasswordBearer</code>
+            (объявленный в зависимости) для определения схемы безопасности OpenAPI, потому что он наследуется от
+            <code>fastapi.security.oauth2.OAuth2</code>, который, в свою очередь, наследуется от
+            <code>fastapi.security.base.SecurityBase</code>.</p>
+            <p>Все утилиты безопасности, интегрируемые с OpenAPI (и автоматической документацией по API),
+            наследуются от <code>SecurityBase</code>, - так <b>FastAPI</b> понимает, как интегрировать их в OpenAPI.</p>
+        </div>
+
+        <h2>Что он делает</h2>
+        <p>Он будет искать в запросе заголовок <code>Authorize</code>, проверять, что его значение - это <code>Bearer</code>
+        плюс некоторый токен, и вернет токен как <code>str</code>.</p>
+        <p>Если заголовок <code>Authorize</code> отсутствует или его значение не содержит токен <code>Bearer</code>,
+        он сразу ответит ошибкой со статус-кодом 401 (<code>UNAUTHORIZED</code>).</p>
+        <p>Вам даже не нужно проверять наличие токена, чтобы вернуть ошибку. Вы можете быть уверены: если ваша функция
+        была выполнена, в этом токене будет <code>str</code>.</p>
+        <p>Мы пока не проверяем валидность токена, но для начала это уже неплохо.</p>
+
+        <h2>Резюме</h2>
+        <p>Таким образом, всего за 3-4 дополнительные строки у вас уже есть некая примитивная форма защиты.</p>
     </article>
 </body>
 </html>
