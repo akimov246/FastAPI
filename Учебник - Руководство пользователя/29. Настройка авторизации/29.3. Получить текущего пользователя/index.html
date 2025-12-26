@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Получить текущего пользователя</title>
+    <link href="../../../themes/style.css" rel="stylesheet">
+    <script defer src="../../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Получить текущего пользователя</h1>
+        <p>В предыдущей главе система безопасности (основанная на системе внедрения зависимостей) передавала
+        <i>функции-обработчику пути</i> <code>token</code> типа <code>str</code>:</p>
+<pre data-line="12" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import Depends, FastAPI
+from fastapi.security import OAuth2PasswordBearer
+
+app = FastAPI()
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+@app.get("/items/")
+async def read_items(token: Annotated[str, Depends(oauth2_scheme)]):
+    return {"token": token}</code></pre>
+        <p>Но это все не слишком полезно.</p>
+        <p>Сделаем так, чтобы она возвращала текущего пользователя.</p>
+
+        <h2>Создать модель пользователя</h2>
+        <p>Сначала создадим Pydantic-модель пользователя.</p>
+        <p>Точно так же, как мы используем Pydantic для объявления тел запросов, мы можем использовать его где угодно:</p>
+<pre data-line="5" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Depends
+from fastapi.security import OAuth2PasswordBearer
+from pydantic import BaseModel
+
+app = FastAPI()
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+class User(BaseModel):
+    username: str
+    email: str | None = None
+    full_name: str | None = None
+    disabled: bool | None = None
+
+
+def fake_decode_token(token):
+    return User(username=token + "fakedecoded", email="john@example.com", full_name="John Doe")
+
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+    user = fake_decode_token(token)
+    return user
+
+
+@app.get("/users/me")
+async def read_users_me(current_user: Annotated[User, Depends(get_current_user)]):
+    return current_user</code></pre>
+
+        <h2>Создать зависимость <code>get_current_user</code></h2>
+        <p>Давайте создадим зависимость <code>get_current_user</code>.</p>
+        <p>Помните, что у зависимостей могут быть подзависимости?</p>
+        <p><code>get_current_user</code> будет иметь зависимость от того же <code>oauth2_scheme</code>, который мы
+        создали ранее.</p>
+        <p>Аналогично тому, как мы делали ранее прямо в <i>операции пути</i>, новая зависимость <code>get_current_user</code>
+        получит <code>token</code> типа <code>str</code> от подзависимости <code>oauth2_scheme</code>:</p>
+<pre data-line="23" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Depends
+from fastapi.security import OAuth2PasswordBearer
+from pydantic import BaseModel
+
+app = FastAPI()
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+class User(BaseModel):
+    username: str
+    email: str | None = None
+    full_name: str | None = None
+    disabled: bool | None = None
+
+
+def fake_decode_token(token):
+    return User(username=token + "fakedecoded", email="john@example.com", full_name="John Doe")
+
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+    user = fake_decode_token(token)
+    return user
+
+
+@app.get("/users/me")
+async def read_users_me(current_user: Annotated[User, Depends(get_current_user)]):
+    return current_user</code></pre>
+
+        <h2>Получить пользователя</h2>
+        <p><code>get_current_user</code> будет использовать созданную нами (ненастоящую) служебную функцию,
+        которая принимает токен типа <code>str</code> и возвращает нашу Pydantic-модель <code>User</code>:</p>
+<pre data-line="19-20, 24-25" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Depends
+from fastapi.security import OAuth2PasswordBearer
+from pydantic import BaseModel
+
+app = FastAPI()
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+class User(BaseModel):
+    username: str
+    email: str | None = None
+    full_name: str | None = None
+    disabled: bool | None = None
+
+
+def fake_decode_token(token):
+    return User(username=token + "fakedecoded", email="john@example.com", full_name="John Doe")
+
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+    user = fake_decode_token(token)
+    return user
+
+
+@app.get("/users/me")
+async def read_users_me(current_user: Annotated[User, Depends(get_current_user)]):
+    return current_user</code></pre>
+
+        <h2>Внедрить текущего пользователя</h2>
+        <p>Теперь мы можем использовать тот же <code>Depends</code> с нашей <code>get_current_user</code> в
+        <i>операции пути</i>:</p>
+<pre data-line="29" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Depends
+from fastapi.security import OAuth2PasswordBearer
+from pydantic import BaseModel
+
+app = FastAPI()
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+class User(BaseModel):
+    username: str
+    email: str | None = None
+    full_name: str | None = None
+    disabled: bool | None = None
+
+
+def fake_decode_token(token):
+    return User(username=token + "fakedecoded", email="john@example.com", full_name="John Doe")
+
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+    user = fake_decode_token(token)
+    return user
+
+
+@app.get("/users/me")
+async def read_users_me(current_user: Annotated[User, Depends(get_current_user)]):
+    return current_user</code></pre>
+        <p>Обратите внимание, что мы объявляем тип <code>current_user</code> как Pydantic-модель <code>User</code>.</p>
+        <p>Это поможет внутри функции с автозавершением и проверками типов.</p>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Возможно, вы помните, что тела запросов также объявляются с помощью Pydantic-моделей.</p>
+            <p>Здесь <b>FastAPI</b> не запутается, потому что вы используете <code>Depends</code>.</p>
+        </div>
+        <div class="admonition note">
+            <h3>Заметка</h3>
+            <p>То, как устроена эта система зависимостей, позволяет иметь разные зависимости, которые возвращают
+            модель <code>User</code>.</p>
+            <p>Мы не ограничены наличием только одной зависимости, которая может возвращать такой тип данных.</p>
+        </div>
+
+        <h2>Другие модели</h2>
+        <p>Теперь вы можете получать текущего пользователя напрямую в <i>функциях-обработчиках пути</i> и работать
+        с механизмами безопасности на уровне <b>внедрения зависимостей</b>, используя <code>Depends</code>.</p>
+        <p>И вы можете использовать любую модель или данные для требований безопасности (в данном случае Pydantic-модель
+        <code>User</code>).</p>
+        <p>Но вы не ограничены использованием какой-то конкретной модели данных, класса или типа.</p>
+        <p>Хотите, чтобы в модели были <code>id</code> и <code>email</code>, но не было <code>username</code>? Пожалуйста.
+        Можно использовать те же инструменты.</p>
+        <p>Хотите просто <code>str</code>? Или просто <code>dict</code>? Или напрямую экземпляр класса модели базы
+        данных? Все работает одинаково.</p>
+        <p>У вас вообще нет пользователей, которые входят в приложение, а есть роботы, боты или другие системы,
+        у которых есть только токен доступа? Снова - все работает так же.</p>
+        <p>Просто используйте любую модель, любой класс, любую базу данных, которые нужны вашему приложению.
+        Система внедрения зависимостей <b>FastAPI</b> поможет вам в этом.</p>
+
+        <h2>Размер кода</h2>
+        <p>Этот пример может показаться многословным. Имейте в виду, что в одном файле мы смешиваем безопасность,
+        модели данных, служебные функции и <i>операции пути</i>.</p>
+        <p>Но вот ключевой момент.</p>
+        <p>Все, что касается безопасности и внедрения зависимостей, пишется один раз.</p>
+        <p>И вы можете сделать это настолько сложным, насколько захотите. И все равно это будет написано только один
+        раз, в одном месте. Со всей гибкостью.</p>
+        <p>При этом у вас могут быть тысячи эндпоинтов (<i>операций пути</i>), использующих одну и ту же систему
+        безопасности.</p>
+        <p>И все они (или любая их часть по вашему желанию) могут воспользоваться преимуществами повторного использования
+        этих зависимостей, которые вы создадите.</p>
+        <p>И все эти тысячи <i>операций пути</i> могут состоять всего из 3 строк:</p>
+<pre data-line="28-30" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Depends
+from fastapi.security import OAuth2PasswordBearer
+from pydantic import BaseModel
+
+app = FastAPI()
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+class User(BaseModel):
+    username: str
+    email: str | None = None
+    full_name: str | None = None
+    disabled: bool | None = None
+
+
+def fake_decode_token(token):
+    return User(username=token + "fakedecoded", email="john@example.com", full_name="John Doe")
+
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+    user = fake_decode_token(token)
+    return user
+
+
+@app.get("/users/me")
+async def read_users_me(current_user: Annotated[User, Depends(get_current_user)]):
+    return current_user</code></pre>
+
+        <h2>Резюме</h2>
+        <p>Теперь вы можете получать текущего пользователя прямо в своей <i>функции-обработчике пути</i>.</p>
+        <p>Мы уже на полпути.</p>
+        <p>Нужно лишь добавить <i>операцию пути</i>, чтобы пользователь/клиент мог отправить <code>username</code>
+        и <code>password</code>.</p>
+        <p>Это будет дальше.</p>
+    </article>
+</body>
+</html>
