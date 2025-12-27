@@ -291,6 +291,9 @@ customElements.define('request-response-container', class extends HTMLElement {
                     pre.innerHTML = data;
                 } else {
                     pre.innerHTML = JSON.stringify(data, undefined, 4);
+                    if (data["token_type"]?.toLowerCase() === "bearer" && data["access_token"]) {
+                        sessionStorage.setItem("access_token", data["access_token"]);
+                    }
                 }
                 Prism.highlightElement(pre);
                 addCopyButton(pre);

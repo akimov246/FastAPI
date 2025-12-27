@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Простая авторизация OAuth2 с паролем и «Bearer»</title>
+    <link href="../../../themes/style.css" rel="stylesheet">
+    <script defer src="../../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Простая авторизация OAuth2 с паролем и «Bearer»</h1>
+        <p>Теперь, отталкиваясь от предыдущей главы, добавим недостающие части, чтобы получить полный поток безопасности.</p>
+
+        <h2>Получение <code>username</code> и <code>password</code></h2>
+        <p>Для получения <code>username</code> и <code>password</code> мы будем использовать утилиты безопасности
+        <b>FastAPI</b>.</p>
+        <p>OAuth2 определяет, что при использовании «password flow» (аутентификация по паролю - именно его мы и используем)
+        клиент/пользователь должен передавать поля <code>username</code> и <code>password</code> в полях формы.</p>
+        <p>В спецификации сказано, что поля должны быть названы именно так. Поэтому <code>user-name</code> или
+        <code>email</code> работать не будут.</p>
+        <p>Но не волнуйтесь, вы можете показать это конечным пользователям во фронтенде в том виде, в котором хотите.</p>
+        <p>А ваши модели баз данных могут использовать любые другие имена.</p>
+        <p>Но для логин-операции пути нам нужно использовать именно эти имена, чтобы быть совместимым со спецификацией
+        (и иметь возможность, например, использовать встроенную систему документации API).</p>
+        <p>В спецификации также указано, что <code>username</code> и <code>password</code> должны передаваться в виде
+        данных формы (так что никакого JSON здесь нет).</p>
+
+        <h3><code>scope</code></h3>
+        <p>В спецификации также говорится, что клиент может передать еще одно поле формы - <code>scope</code>.</p>
+        <p>Имя поля формы - <code>scope</code> (в единичном числе), но на самом деле это длинная строка, состоящая
+        из отдельных «scopes», разделенных пробелами.</p>
+        <p>Каждый «scope» - это просто строка (без пробелов).</p>
+        <p>Обычно они используются для указания уровней доступа, например:</p>
+        <ul>
+            <li>
+                <p><code>users:read</code> или <code>users:write</code> - распространенные примеры.</p>
+            </li>
+            <li>
+                <p><code>instagram_basic</code> используется Facebook / Instagram.</p>
+            </li>
+            <li>
+                <p><code>https://www.googleapis.com/auth/drive</code> используется Google.</p>
+            </li>
+        </ul>
+        <div class="admonition info">
+            <h3>Дополнительная информация</h3>
+            <p>В OAuth2 «scope» - это просто строка, которая указывает требуемое конкретное разрешение.</p>
+            <p>Не имеет значения, содержит ли она другие символы, например <code>:</code>, или является ли это URL.</p>
+            <p>Эти детали зависят от реализации.</p>
+            <p>Для OAuth2 это просто строки.</p>
+        </div>
+
+        <h2>Код для получения <code>username</code> и <code>password</code></h2>
+        <p>Теперь воспользуемся утилитами, предоставляемыми <b>FastAPI</b>, чтобы обработать это.</p>
+
+        <h3><code>OAuth2PasswordRequestForm</code></h3>
+        <p>Сначала импортируйте <code>OAuth2PasswordRequestForm</code> и затем используйте ее как зависимость
+        с <code>Depends</code> в операции пути для <code>/token</code>:</p>
+<pre data-line="4, 88" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+fake_users_db = {
+    "johndoe": {
+        "username": "johndoe",
+        "full_name": "John Doe",
+        "email": "johndoe@example.com",
+        "hashed_password": "fakehashedsecret",
+        "disabled": False,
+    },
+    "alice": {
+        "username": "alice",
+        "full_name": "Alice Wonderson",
+        "email": "alice@example.com",
+        "hashed_password": "fakehashedsecret2",
+        "disabled": True,
+    },
+}
+
+
+def fake_hash_password(password: str):
+    return "fakehashed" + password
+
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+class User(BaseModel):
+    username: str
+    email: str | None = None
+    full_name: str | None = None
+    disabled: bool | None = None
+
+
+class UserInDB(User):
+    hashed_password: str
+
+
+def get_user(db, username: str):
+    if username in db:
+        user_dict = db[username]
+        return UserInDB(**user_dict)
+
+
+def fake_decode_token(token: str):
+    user = get_user(fake_users_db, token)
+    return user
+
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+    user = fake_decode_token(token)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    return user
+
+
+async def get_current_active_user(current_user: Annotated[User, Depends(get_current_user)]):
+    if current_user.disabled:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
+
+@app.post("/token")
+async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    user_dict = fake_users_db.get(form_data.username)
+    if not user_dict:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    user = UserInDB(**user_dict)
+    hashed_password = fake_hash_password(form_data.password)
+    if not hashed_password == user.hashed_password:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    return {"access_token": user.username, "token_type": "bearer"}
+
+
+@app.get("/users/me")
+async def read_users_me(current_user: Annotated[User, Depends(get_current_active_user)]):
+    return current_user</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">username:</label>
+            <label slot="labels">password:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/token">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="username" value="johndoe">
+            <input slot="inputs" type="password" name="password" value="secret">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/users/me">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <script>
+            document.currentScript.previousElementSibling.querySelector('button').addEventListener('click', function(event) {
+                event.target.dataset.headers = `{"Authorization": "Bearer ${sessionStorage.getItem('access_token')}"}`;
+            });
+        </script>
+        <p><code>OAuth2PasswordRequestForm</code> - это зависимость-класс, которая объявляет тело формы со следующими
+        полями:</p>
+        <ul>
+            <li>
+                <p><code>username</code>.</p>
+            </li>
+            <li>
+                <p><code>password</code>.</p>
+            </li>
+            <li>
+                <p>Необязательное поле <code>scope</code> в виде большой строки, состоящей из строк, разделенных
+                пробелами.</p>
+            </li>
+            <li>
+                <p>Необязательное поле <code>grant_type</code>.</p>
+            </li>
+        </ul>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>По спецификации OAuth2 поле <code>grant_type</code> обязательно и содержит фиксированное значение
+            <code>password</code>, но <code>OAuth2PasswordRequestForm</code> это не проверяет строго.</p>
+            <p>Если вам нужно это строгое требование, используйте <code>OAuth2PasswordRequestFormStrict</code>
+            вместо <code>OAuth2PasswordRequestForm</code>.</p>
+        </div>
+        <ul>
+            <li>
+                <p>Необязательное поле <code>client_id</code> (в нашем примере оно не нужно).</p>
+            </li>
+            <li>
+                <p>Необязательное поле <code>client_secret</code> (в нашем примере оно не нужно).</p>
+            </li>
+        </ul>
+        <div class="admonition info">
+            <h3>Дополнительная информация</h3>
+            <p><code>OAuth2PasswordRequestForm</code> - это не специальный класс <b>FastAPI</b>, как
+            <code>OAuth2PasswordBearer</code>.</p>
+            <p><code>OAuth2PasswordBearer</code> сообщает <b>FastAPI</b>, что это схема безопасности. Поэтому она
+            добавляется в OpenAPI соответствующим образом.</p>
+            <p>А <code>OAuth2PasswordRequestForm</code> - это просто зависимость-класс, которую вы могли бы написать
+            сами, или вы могли бы объявить параметры <code>Form</code> напрямую.</p>
+            <p>Но так как это распространенный вариант использования, он предоставлен <b>FastAPI</b> напрямую,
+            чтобы упростить задачу.</p>
+        </div>
+
+        <h3>Использование данных формы</h3>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>У экземпляра зависимости <code>OAuth2PasswordRequestForm</code> не будет <code>scope</code>
+            с длинной строкой, разделенной пробелами. Вместо этого будет атрибут <code>scopes</code> со списком
+            отдельных строк - по одной для каждого переданного scope.</p>
+            <p>В данном примере мы не используем <code>scopes</code>, но если вам это необходимо, функциональность
+            есть.</p>
+        </div>
+        <p>Теперь получим данные о пользователе из (ненастоящей) базы данных, используя <code>username</code>
+        из поля формы.</p>
+        <p>Если такого пользователя нет, то мы возвращаем ошибку «Incorrect username or password» (неверное имя
+        пользователя или пароль).</p>
+        <p>Для ошибки используем исключение <code>HTTPException</code>:</p>
+<pre data-line="3, 89-91" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+fake_users_db = {
+    "johndoe": {
+        "username": "johndoe",
+        "full_name": "John Doe",
+        "email": "johndoe@example.com",
+        "hashed_password": "fakehashedsecret",
+        "disabled": False,
+    },
+    "alice": {
+        "username": "alice",
+        "full_name": "Alice Wonderson",
+        "email": "alice@example.com",
+        "hashed_password": "fakehashedsecret2",
+        "disabled": True,
+    },
+}
+
+
+def fake_hash_password(password: str):
+    return "fakehashed" + password
+
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+class User(BaseModel):
+    username: str
+    email: str | None = None
+    full_name: str | None = None
+    disabled: bool | None = None
+
+
+class UserInDB(User):
+    hashed_password: str
+
+
+def get_user(db, username: str):
+    if username in db:
+        user_dict = db[username]
+        return UserInDB(**user_dict)
+
+
+def fake_decode_token(token: str):
+    user = get_user(fake_users_db, token)
+    return user
+
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+    user = fake_decode_token(token)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    return user
+
+
+async def get_current_active_user(current_user: Annotated[User, Depends(get_current_user)]):
+    if current_user.disabled:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
+
+@app.post("/token")
+async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    user_dict = fake_users_db.get(form_data.username)
+    if not user_dict:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    user = UserInDB(**user_dict)
+    hashed_password = fake_hash_password(form_data.password)
+    if not hashed_password == user.hashed_password:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    return {"access_token": user.username, "token_type": "bearer"}
+
+
+@app.get("/users/me")
+async def read_users_me(current_user: Annotated[User, Depends(get_current_active_user)]):
+    return current_user</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">username:</label>
+            <label slot="labels">password:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/token">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="username" value="alice">
+            <input slot="inputs" type="password" name="password" value="secret2">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/users/me">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <script>
+            document.currentScript.previousElementSibling.querySelector('button').addEventListener('click', function(event) {
+                event.target.dataset.headers = `{"Authorization": "Bearer ${sessionStorage.getItem('access_token')}"}`;
+            });
+        </script>
+
+        <h3>Проверка пароля</h3>
+        <p>На данный момент у нас есть данные о пользователе из нашей базы данных, но мы еще не проверили пароль.</p>
+        <p>Давайте сначала поместим эти данные в Pydantic-модель <code>UserInDB</code>.</p>
+        <p>Никогда нельзя сохранять пароли в открытом виде, поэтому мы будем использовать (пока что ненастоящую)
+        систему хеширования паролей.</p>
+        <p>Если пароли не совпадают, мы возвращаем ту же ошибку.</p>
+
+        <h4>Хеширование паролей</h4>
+        <p>«Хеширование» означает: преобразование некоторого содержимого (в данном случае пароля) в последовательность
+        байтов (просто строку), которая выглядит как тарабарщина.</p>
+        <p>Каждый раз, когда вы передаете точно такое же содержимое (точно такой же пароль), вы получаете точно такую
+        же тарабарщину.</p>
+        <p>Но преобразовать тарабарщину обратно в пароль невозможно.</p>
+
+        <h4>Зачем использовать хеширование паролей</h4>
+        <p>Если вашу базу данных украдут, у злоумышленника не будет паролей пользователей в открытом виде, только хеши.</p>
+        <p>Таким образом, он не сможет попробовать использовать эти же пароли в другой системе (поскольку многие
+        пользователи используют один и тот же пароль повсеместно, это было бы опасно).</p>
+<pre data-line="92-95" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+fake_users_db = {
+    "johndoe": {
+        "username": "johndoe",
+        "full_name": "John Doe",
+        "email": "johndoe@example.com",
+        "hashed_password": "fakehashedsecret",
+        "disabled": False,
+    },
+    "alice": {
+        "username": "alice",
+        "full_name": "Alice Wonderson",
+        "email": "alice@example.com",
+        "hashed_password": "fakehashedsecret2",
+        "disabled": True,
+    },
+}
+
+
+def fake_hash_password(password: str):
+    return "fakehashed" + password
+
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+class User(BaseModel):
+    username: str
+    email: str | None = None
+    full_name: str | None = None
+    disabled: bool | None = None
+
+
+class UserInDB(User):
+    hashed_password: str
+
+
+def get_user(db, username: str):
+    if username in db:
+        user_dict = db[username]
+        return UserInDB(**user_dict)
+
+
+def fake_decode_token(token: str):
+    user = get_user(fake_users_db, token)
+    return user
+
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+    user = fake_decode_token(token)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    return user
+
+
+async def get_current_active_user(current_user: Annotated[User, Depends(get_current_user)]):
+    if current_user.disabled:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
+
+@app.post("/token")
+async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    user_dict = fake_users_db.get(form_data.username)
+    if not user_dict:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    user = UserInDB(**user_dict)
+    hashed_password = fake_hash_password(form_data.password)
+    if not hashed_password == user.hashed_password:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    return {"access_token": user.username, "token_type": "bearer"}
+
+
+@app.get("/users/me")
+async def read_users_me(current_user: Annotated[User, Depends(get_current_active_user)]):
+    return current_user</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">username:</label>
+            <label slot="labels">password:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/token">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="username" value="johndoe">
+            <input slot="inputs" type="password" name="password" value="secret">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/users/me">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <script>
+            document.currentScript.previousElementSibling.querySelector('button').addEventListener('click', function(event) {
+                event.target.dataset.headers = `{"Authorization": "Bearer ${sessionStorage.getItem('access_token')}"}`;
+            });
+        </script>
+
+        <h4>Про <code>**user_dict</code></h4>
+        <p><code>UserInDB(**user_dict)</code> означает:</p>
+        <p><i>Передать ключи и значения <code>user_dict</code> непосредственно как аргументы ключ-значение, эквивалентно:</i></p>
+<pre class="line-numbers"><code class="language-python">UserInDB(
+    username = user_dict["username"],
+    email = user_dict["email"],
+    full_name = user_dict["full_name"],
+    disabled = user_dict["disabled"],
+    hashed_password = user_dict["hashed_password"]
+)</code></pre>
+        <div class="admonition info">
+            <h3>Дополнительная информация</h3>
+            <p>Более полное объяснение <code>**user_dict</code> можно найти в
+            <a target="_blank" href="../../18.%20Дополнительные%20модели/index.html">документации к <b>Дополнительным моделям</b></a>.</p>
+        </div>
+
+        <h2>Возврат токена</h2>
+        <p>Ответ операции пути <code>/token</code> должен быть объектом JSON.</p>
+        <p>В нем должен быть <code>token_type</code>. В нашем случае, поскольку мы используем токены типа «Bearer»,
+        тип токена должен быть <code>bearer</code>.</p>
+        <p>И в нем должен быть <code>access_token</code> - строка, содержащая наш токен доступа.</p>
+        <p>В этом простом примере мы намеренно поступим небезопасно и вернем тот же <code>username</code> в качестве
+        токена.</p>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>В следующей главе вы увидите реально защищенную реализацию с хешированием паролей и токенами
+            <abbr title="JSON Web Tokens - JSON веб-токены">JWT</abbr>.</p>
+            <p>Но пока давайте сосредоточимся на необходимых нам деталях.</p>
+        </div>
+<pre data-line="96" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+fake_users_db = {
+    "johndoe": {
+        "username": "johndoe",
+        "full_name": "John Doe",
+        "email": "johndoe@example.com",
+        "hashed_password": "fakehashedsecret",
+        "disabled": False,
+    },
+    "alice": {
+        "username": "alice",
+        "full_name": "Alice Wonderson",
+        "email": "alice@example.com",
+        "hashed_password": "fakehashedsecret2",
+        "disabled": True,
+    },
+}
+
+
+def fake_hash_password(password: str):
+    return "fakehashed" + password
+
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+class User(BaseModel):
+    username: str
+    email: str | None = None
+    full_name: str | None = None
+    disabled: bool | None = None
+
+
+class UserInDB(User):
+    hashed_password: str
+
+
+def get_user(db, username: str):
+    if username in db:
+        user_dict = db[username]
+        return UserInDB(**user_dict)
+
+
+def fake_decode_token(token: str):
+    user = get_user(fake_users_db, token)
+    return user
+
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+    user = fake_decode_token(token)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    return user
+
+
+async def get_current_active_user(current_user: Annotated[User, Depends(get_current_user)]):
+    if current_user.disabled:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
+
+@app.post("/token")
+async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    user_dict = fake_users_db.get(form_data.username)
+    if not user_dict:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    user = UserInDB(**user_dict)
+    hashed_password = fake_hash_password(form_data.password)
+    if not hashed_password == user.hashed_password:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    return {"access_token": user.username, "token_type": "bearer"}
+
+
+@app.get("/users/me")
+async def read_users_me(current_user: Annotated[User, Depends(get_current_active_user)]):
+    return current_user</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">username:</label>
+            <label slot="labels">password:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/token">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="username" value="alice">
+            <input slot="inputs" type="password" name="password" value="secret2">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/users/me">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <script>
+            document.currentScript.previousElementSibling.querySelector('button').addEventListener('click', function(event) {
+                event.target.dataset.headers = `{"Authorization": "Bearer ${sessionStorage.getItem('access_token')}"}`;
+            });
+        </script>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Согласно спецификации, вы должны возвращать JSON с <code>access_token</code> и <code>token_type</code>,
+            как в данном примере.</p>
+            <p>Это то, что вы должны сделать сами в своем коде и убедиться, что вы используете именно эти JSON-ключи.</p>
+            <p>Это практически единственное, о чем нужно не забыть, чтобы соответствовать спецификациям.</p>
+            <p>Остальное за вас сделает <b>FastAPI</b>.</p>
+        </div>
+
+        <h2>Обновление зависимостей</h2>
+        <p>Теперь мы обновим наши зависимости.</p>
+        <p>Мы хотим получить <code>current_user</code> только если этот пользователь активен.</p>
+        <p>Поэтому мы создаем дополнительную зависимость <code>get_current_active_user</code>, которая, в свою очередь,
+        использует в качестве зависимость <code>get_current_user</code>.</p>
+        <p>Обе эти зависимости просто вернут HTTP-ошибку, если пользователь не существует или неактивен.</p>
+        <p>Таким образом, в нашей операции пути мы получим пользователя только в том случае, если он существует,
+        корректно аутентифицирован и активен:</p>
+<pre data-line="70-78, 81-84, 101" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+fake_users_db = {
+    "johndoe": {
+        "username": "johndoe",
+        "full_name": "John Doe",
+        "email": "johndoe@example.com",
+        "hashed_password": "fakehashedsecret",
+        "disabled": False,
+    },
+    "alice": {
+        "username": "alice",
+        "full_name": "Alice Wonderson",
+        "email": "alice@example.com",
+        "hashed_password": "fakehashedsecret2",
+        "disabled": True,
+    },
+}
+
+
+def fake_hash_password(password: str):
+    return "fakehashed" + password
+
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+class User(BaseModel):
+    username: str
+    email: str | None = None
+    full_name: str | None = None
+    disabled: bool | None = None
+
+
+class UserInDB(User):
+    hashed_password: str
+
+
+def get_user(db, username: str):
+    if username in db:
+        user_dict = db[username]
+        return UserInDB(**user_dict)
+
+
+def fake_decode_token(token: str):
+    user = get_user(fake_users_db, token)
+    return user
+
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+    user = fake_decode_token(token)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    return user
+
+
+async def get_current_active_user(current_user: Annotated[User, Depends(get_current_user)]):
+    if current_user.disabled:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
+
+@app.post("/token")
+async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    user_dict = fake_users_db.get(form_data.username)
+    if not user_dict:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    user = UserInDB(**user_dict)
+    hashed_password = fake_hash_password(form_data.password)
+    if not hashed_password == user.hashed_password:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    return {"access_token": user.username, "token_type": "bearer"}
+
+
+@app.get("/users/me")
+async def read_users_me(current_user: Annotated[User, Depends(get_current_active_user)]):
+    return current_user</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">username:</label>
+            <label slot="labels">password:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/token">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="username" value="johndoe">
+            <input slot="inputs" type="password" name="password" value="secret">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/users/me">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <script>
+            document.currentScript.previousElementSibling.querySelector('button').addEventListener('click', function(event) {
+                event.target.dataset.headers = `{"Authorization": "Bearer ${sessionStorage.getItem('access_token')}"}`;
+            });
+        </script>
+        <div class="admonition info">
+            <h3>Дополнительная информация</h3>
+            <p>Дополнительный HTTP-заголовок <code>WWW-Authenticate</code> со значением <code>Bearer</code>, который
+            мы здесь возвращаем, также является частью спецификации.</p>
+            <p>Любой HTTP статус-код <b>401 «UNAUTHORIZED»</b> должен также возвращать заголовок <code>WWW-Authenticate</code>.</p>
+            <p>В случае с bearer-токенами (наш случай) значение этого заголовка должно быть <code>Bearer</code>.</p>
+            <p>Фактически, этот дополнительный заголовок можно опустить, и все будет работать.</p>
+            <p>Но он приведен здесь для соответствия спецификациям.</p>
+            <p>Кроме того, могут существовать инструменты, которые ожидают его и могут использовать, и это может
+            быть полезно для вас и ваших пользователей - сейчас или в будущем.</p>
+            <p>В этом и заключается преимущество стандартов...</p>
+        </div>
+
+        <h2>Резюме</h2>
+        <p>Теперь у вас есть инструменты для реализации полноценной системы безопасности на основе <code>username</code>
+        и <code>password</code> для вашего API.</p>
+        <p>Используя эти средства, можно сделать систему безопасности совместимой с любой базой данных и с любой
+        пользовательской или моделью данных.</p>
+        <p>Единственная деталь, которой не хватает, - система пока еще не «защищена» по-настоящему.</p>
+        <p>В следующей главе вы увидите, как использовать библиотеку безопасного хеширования паролей и токены
+        <abbr title="JSON Web Tokens - JSON веб-токены">JWT</abbr>.</p>
+    </article>
+</body>
+</html>
