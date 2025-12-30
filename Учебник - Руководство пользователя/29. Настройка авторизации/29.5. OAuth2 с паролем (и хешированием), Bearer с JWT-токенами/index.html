@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>OAuth2 с паролем (и хешированием), Bearer с JWT-токенами</title>
+    <link href="../../../themes/style.css" rel="stylesheet">
+    <script defer src="../../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>OAuth2 с паролем (и хешированием), Bearer с JWT-токенами</h1>
+        <p>Теперь, когда у нас определен процесс обеспечения безопасности, давайте сделаем приложение действительно
+        безопасным, используя токены <abbr title="JSON Wen-Tokens - JSON веб-токены">JWT</abbr> и безопасное
+        хеширование паролей.</p>
+        <p>Этот код можно реально использовать в своем приложении, сохранять хеши паролей в базе данных и т.д.</p>
+        <p>Мы продолжим разбираться, начиная с того места, на котором остановились в предыдущей главе.</p>
+
+        <h2>Про JWT</h2>
+        <p>JWT означает «JSON Web Tokens».</p>
+        <p>Это стандарт для кодирования JSON-объекта в виде длинной строки без пробелов. Выглядит это следующим образом:</p>
+        <pre><code class="language-">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c</code></pre>
+        <p>Он не зашифрован, поэтому любой человек может восстановить информацию из его содержимого.</p>
+        <p>Но он подписан. Следовательно, когда вы получаете токен, который вы эмитировали (выдавали), вы можете
+        убедиться, что это именно вы его эмитировали.</p>
+        <p>Таким образом, можно создать токен со сроком действия, скажем, 1 неделя. А когда пользователь вернется
+        на следующий день с тем же токеном, вы будете знать, что он все еще авторизован в вашей системе.</p>
+        <p>Через неделю срок действия токена истечет, пользователь не будет авторизован и ему придется заново входить
+        в систему, чтобы получить новый токен. А если пользователь (или третье лицо) попытается модифицировать токен,
+        чтобы изменить срок действия, вы сможете это обнаружить, поскольку подписи не будут совпадать.</p>
+        <p>Если вы хотите поиграть с JWT-токенами и посмотреть, как они работают, посмотирте
+        <a target="_blank" href="https://jwt.io">https://jwt.io</a>.</p>
+
+        <h2>Установка <code>PyJWT</code></h2>
+        <p>Нам необходимо установить <code>pyjwt</code> для генерации и проверки JWT-токенов на языке Python.</p>
+        <p>Убедитесь, что вы создали виртуальное окружение, активируйте его, а затем установите <code>pyjwt</code>:</p>
+        <pre><code class="language-bash">$ pip install pyjwt</code></pre>
+        <div class="admonition info">
+            <h3>Дополинтельная информация</h3>
+            <p>Если вы планируете использовать алгоритмы цифровой подписи, такие как RSA или ECDSA, вам следует
+            установить  зависимость библиотеки криптографии <code>pyjwt[crypto]</code>.</p>
+            <p>Подробнее об этом можно прочитать в
+            <a target="_blank" href="https://pyjwt.readthedocs.io/en/latest/installation.html">документации по установке PyJWT</a>.</p>
+        </div>
+
+        <h2>Хеширование паролей</h2>
+        <p>«Хеширование» означает преобразование некоторого содержимого (в данном случае пароля) в последовательность
+        байтов (просто строку), которая выглядит как тарабарщина.</p>
+        <p>Каждый раз, когда вы передаете точно такое же содержимое (точно такой же пароль), вы получаете точно
+        такую же тарабарщину.</p>
+        <p>Но преобразовать тарабарщину обратно в пароль невозможно.</p>
+
+        <h3>Для чего нужно хеширование паролей</h3>
+        <p>Если ваша база данных будет украдена, то вор не получит пароли пользователей в открытом виде, а только их
+        хеши.</p>
+        <p>Таким образом, вор не сможет использовать этот пароль в другой системе (поскольку многие пользователи
+        везде используют один и и тот же пароль, это было бы опасно).</p>
+
+        <h2>Установка <code>pwdlib</code></h2>
+        <p>pwdlib - это отличный пакет Python для работы с хешами паролей.</p>
+        <p>Он поддерживает множество безопасных алгоритмов хеширования и утилит для работы с ними.</p>
+        <p>Рекомендуемый алгоритм - «Argon2».</p>
+        <p>Убедитесь, что вы создали виртуальное окружение, активируйте его, и затем установите pwdlib вместе с
+        Argon2:</p>
+        <pre><code class="language-bash">$ pip install "pwdlib[argon2]"</code></pre>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>С помощью <code>pwdlib</code> можно даже настроить его на чтение паролей, созданных <b>Django</b>,
+            плагином безопасности <b>Flask</b> или многими другими библиотеками.</p>
+            <p>Таким образом, вы сможете, например, совместно использовать одни и те же данные из приложения Django
+            в базе данных с приложением FastAPI. Или постепенно мигрировать Django-приложение, используя ту же
+            базу данных.</p>
+            <p>При этом пользователи смогут одновременно входить в систему как из приложения Django, так и из
+            приложения <b>FastAPI</b>.</p>
+        </div>
+
+        <h2>Хеширование и проверка паролей</h2>
+        <p>Импортируйте необходимые инструменты из <code>pwdlib</code>.</p>
+        <p>Создайте экземпляр PasswordHash с рекомендуемыми настройками - он будет использоваться для хеширования и
+        проверки паролей.</p>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>pwdlib также поддерживает алгоритм хеширования bcrypt, но не включает устаревшие алгоритмы — для работы
+            с устаревшими хешами рекомендуется использовать библиотеку passlib.</p>
+            <p>Например, вы можете использовать ее для чтения и проверки паролей, сгенерированных другой системой
+            (например, Django), но хешировать все новые пароли другим алгоритмом, например Argon2 или Bcrypt.</p>
+            <p>И при этом быть совместимым со всеми этими системами.</p>
+        </div>
+        <p>Создайте служебную функцию для хеширования пароля, поступающего от пользователя.</p>
+        <p>А затем создайте другую — для проверки соответствия полученного пароля и хранимого хеша.</p>
+        <p>И еще одну — для аутентификации и возврата пользователя.</p>
+<pre data-line="9, 50, 69-70, 73-74, 83-89" class="line-numbers"><code class="language-python">from datetime import datetime, timedelta, timezone
+from typing import Annotated
+
+import jwt
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.middleware.cors import CORSMiddleware
+from jwt.exceptions import InvalidTokenError
+from pwdlib import PasswordHash
+from pydantic import BaseModel
+
+# to get a string like this run:
+# openssl rand -hex 32
+SECRET_KEY = "0841f597ccfb421b46b2d518600c2dcf5a18c799ded3239648f46d3b692efcaf"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+
+fake_users_db = {
+    "johndoe": {
+        "username": "johndoe",
+        "full_name": "John Doe",
+        "email": "johndoe@example.com",
+        "hashed_password": "$argon2id$v=19$m=65536,t=3,p=4$wagCPXjifgvUFBzq4hqe3w$CYaIb8sB+wtD+Vu/P4uod1+Qof8h+1g7bbDlBID48Rc",
+        "disabled": False,
+    }
+}
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class TokenData(BaseModel):
+    username: str | None = None
+
+
+class User(BaseModel):
+    username: str
+    email: str | None = None
+    full_name: str | None = None
+    disabled: bool | None = None
+
+
+class UserInDB(User):
+    hashed_password: str
+
+
+password_hash = PasswordHash.recommended()
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+def verify_password(plain_password, hashed_password):
+    return password_hash.verify(plain_password, hashed_password)
+
+
+def get_password_hash(password):
+    return password_hash.hash(password)
+
+
+def get_user(db, username: str):
+    if username in db:
+        user_dict = db[username]
+        return UserInDB(**user_dict)
+
+
+def authenticate_user(fake_db, username: str, password: str):
+    user = get_user(fake_db, username)
+    if not user:
+        return False
+    if not verify_password(password, user.hashed_password):
+        return False
+    return user
+
+
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"}
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+        token_data = TokenData(username=username)
+    except InvalidTokenError:
+        raise credentials_exception
+    user = get_user(fake_users_db, token_data.username)
+    if user is None:
+        raise credentials_exception
+    return user
+
+
+async def get_current_active_user(current_user: Annotated[User, Depends(get_current_user)]):
+    if current_user.disabled:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
+
+@app.post("/token")
+async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
+    user = authenticate_user(fake_users_db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
+    return Token(access_token=access_token, token_type="bearer")
+
+
+@app.get("/users/me", response_model=User)
+async def read_users_me(current_user: Annotated[User, Depends(get_current_active_user)]):
+    return current_user
+
+
+@app.get("/users/me/items")
+async def read_own_items(current_user: Annotated[User, Depends(get_current_active_user)]):
+    return [{"item_id": "Foo", "owner": current_user.username}]</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">username:</label>
+            <label slot="labels">password:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/token">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="username" value="johndoe">
+            <input slot="inputs" type="password" name="password" value="secret">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/users/me">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <script>
+            document.currentScript.previousElementSibling.querySelector('button').addEventListener('click', function(event) {
+                event.target.dataset.headers = `{"Authorization": "Bearer ${sessionStorage.getItem('access_token')}"}`;
+            });
+        </script>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/users/me/items">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <script>
+            document.currentScript.previousElementSibling.querySelector('button').addEventListener('click', function(event) {
+                event.target.dataset.headers = `{"Authorization": "Bearer ${sessionStorage.getItem('access_token')}"}`;
+            });
+        </script>
+        <div class="admonition note">
+            <h3>Технические детали</h3>
+            <p>Если проверить новую (фальшивую) базу данных <code>fake_users_db</code>, то можно увидеть, как теперь
+            выглядит хешированный пароль:</p>
+            <pre><code class="language-">"$argon2id$v=19$m=65536,t=3,p=4$wagCPXjifgvUFBzq4hqe3w$CYaIb8sB+wtD+Vu/P4uod1+Qof8h+1g7bbDlBID48Rc"</code></pre>
+        </div>
+    </article>
+</body>
+</html>
