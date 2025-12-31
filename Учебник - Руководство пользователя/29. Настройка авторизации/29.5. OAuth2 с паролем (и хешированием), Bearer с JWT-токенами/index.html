@@ -27,7 +27,7 @@
         <p>Через неделю срок действия токена истечет, пользователь не будет авторизован и ему придется заново входить
         в систему, чтобы получить новый токен. А если пользователь (или третье лицо) попытается модифицировать токен,
         чтобы изменить срок действия, вы сможете это обнаружить, поскольку подписи не будут совпадать.</p>
-        <p>Если вы хотите поиграть с JWT-токенами и посмотреть, как они работают, посмотирте
+        <p>Если вы хотите поиграть с JWT-токенами и посмотреть, как они работают, посмотрите
         <a target="_blank" href="https://jwt.io">https://jwt.io</a>.</p>
 
         <h2>Установка <code>PyJWT</code></h2>
@@ -35,9 +35,9 @@
         <p>Убедитесь, что вы создали виртуальное окружение, активируйте его, а затем установите <code>pyjwt</code>:</p>
         <pre><code class="language-bash">$ pip install pyjwt</code></pre>
         <div class="admonition info">
-            <h3>Дополинтельная информация</h3>
+            <h3>Дополнительная информация</h3>
             <p>Если вы планируете использовать алгоритмы цифровой подписи, такие как RSA или ECDSA, вам следует
-            установить  зависимость библиотеки криптографии <code>pyjwt[crypto]</code>.</p>
+            установить зависимость библиотеки криптографии <code>pyjwt[crypto]</code>.</p>
             <p>Подробнее об этом можно прочитать в
             <a target="_blank" href="https://pyjwt.readthedocs.io/en/latest/installation.html">документации по установке PyJWT</a>.</p>
         </div>
@@ -291,6 +291,671 @@ async def read_own_items(current_user: Annotated[User, Depends(get_current_activ
             выглядит хешированный пароль:</p>
             <pre><code class="language-">"$argon2id$v=19$m=65536,t=3,p=4$wagCPXjifgvUFBzq4hqe3w$CYaIb8sB+wtD+Vu/P4uod1+Qof8h+1g7bbDlBID48Rc"</code></pre>
         </div>
+
+        <h2>Работа с JWT токенами</h2>
+        <p>Импортируйте установленные модули.</p>
+        <p>Создайте случайный секретный ключ, который будет использован для подписи JWT-токенов.</p>
+        <p>Для генерации безопасного случайного секретного ключа используйте команду:</p>
+        <pre><code class="language-bash">$ openssl rand -hex 32</code></pre>
+        <p>И скопируйте полученный результат в переменную <code>SECRET_KEY</code> (не используйте тот, что в примере).</p>
+        <p>Создайте переменную <code>ALGORITH</code> с алгоритмом, используемым для подписи JWT-токена, и установите
+        для нее значение <code>"HS256"</code>.</p>
+        <p>Создайте переменную для срока действия токена.</p>
+        <p>Определите Pydantic-модель, которая будет использоваться для формирования ответа на запрос на получение токена.</p>
+        <p>Создайте служебную функцию для генерации нового токена доступа.</p>
+<pre data-line="4, 8, 14-16, 30-32, 92-100" class="line-numbers"><code class="language-python">from datetime import datetime, timedelta, timezone
+from typing import Annotated
+
+import jwt
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.middleware.cors import CORSMiddleware
+from jwt.exceptions import InvalidTokenError
+from pwdlib import PasswordHash
+from pydantic import BaseModel
+
+# to get a string like this run:
+# openssl rand -hex 32
+SECRET_KEY = "0841f597ccfb421b46b2d518600c2dcf5a18c799ded3239648f46d3b692efcaf"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+
+fake_users_db = {
+    "johndoe": {
+        "username": "johndoe",
+        "full_name": "John Doe",
+        "email": "johndoe@example.com",
+        "hashed_password": "$argon2id$v=19$m=65536,t=3,p=4$wagCPXjifgvUFBzq4hqe3w$CYaIb8sB+wtD+Vu/P4uod1+Qof8h+1g7bbDlBID48Rc",
+        "disabled": False,
+    }
+}
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class TokenData(BaseModel):
+    username: str | None = None
+
+
+class User(BaseModel):
+    username: str
+    email: str | None = None
+    full_name: str | None = None
+    disabled: bool | None = None
+
+
+class UserInDB(User):
+    hashed_password: str
+
+
+password_hash = PasswordHash.recommended()
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+def verify_password(plain_password, hashed_password):
+    return password_hash.verify(plain_password, hashed_password)
+
+
+def get_password_hash(password):
+    return password_hash.hash(password)
+
+
+def get_user(db, username: str):
+    if username in db:
+        user_dict = db[username]
+        return UserInDB(**user_dict)
+
+
+def authenticate_user(fake_db, username: str, password: str):
+    user = get_user(fake_db, username)
+    if not user:
+        return False
+    if not verify_password(password, user.hashed_password):
+        return False
+    return user
+
+
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"}
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+        token_data = TokenData(username=username)
+    except InvalidTokenError:
+        raise credentials_exception
+    user = get_user(fake_users_db, token_data.username)
+    if user is None:
+        raise credentials_exception
+    return user
+
+
+async def get_current_active_user(current_user: Annotated[User, Depends(get_current_user)]):
+    if current_user.disabled:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
+
+@app.post("/token")
+async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
+    user = authenticate_user(fake_users_db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
+    return Token(access_token=access_token, token_type="bearer")
+
+
+@app.get("/users/me", response_model=User)
+async def read_users_me(current_user: Annotated[User, Depends(get_current_active_user)]):
+    return current_user
+
+
+@app.get("/users/me/items")
+async def read_own_items(current_user: Annotated[User, Depends(get_current_active_user)]):
+    return [{"item_id": "Foo", "owner": current_user.username}]</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">username:</label>
+            <label slot="labels">password:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/token">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="username" value="johndoe">
+            <input slot="inputs" type="password" name="password" value="secret">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/users/me">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <script>
+            document.currentScript.previousElementSibling.querySelector('button').addEventListener('click', function(event) {
+                event.target.dataset.headers = `{"Authorization": "Bearer ${sessionStorage.getItem('access_token')}"}`;
+            });
+        </script>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/users/me/items">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <script>
+            document.currentScript.previousElementSibling.querySelector('button').addEventListener('click', function(event) {
+                event.target.dataset.headers = `{"Authorization": "Bearer ${sessionStorage.getItem('access_token')}"}`;
+            });
+        </script>
+
+        <h2>Обновление зависимостей</h2>
+        <p>Обновите <code>get_current_user</code> для получения того же токена, что и раньше, но на этот раз с
+        использованем JWT-токена.</p>
+        <p>Декодируйте полученный токен, проверьте его и верните текущего пользователя.</p>
+        <p>Если токен недействителен, то сразу же верните HTTP-ошибку.</p>
+<pre data-line="103-120" class="line-numbers"><code class="language-python">from datetime import datetime, timedelta, timezone
+from typing import Annotated
+
+import jwt
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.middleware.cors import CORSMiddleware
+from jwt.exceptions import InvalidTokenError
+from pwdlib import PasswordHash
+from pydantic import BaseModel
+
+# to get a string like this run:
+# openssl rand -hex 32
+SECRET_KEY = "0841f597ccfb421b46b2d518600c2dcf5a18c799ded3239648f46d3b692efcaf"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+
+fake_users_db = {
+    "johndoe": {
+        "username": "johndoe",
+        "full_name": "John Doe",
+        "email": "johndoe@example.com",
+        "hashed_password": "$argon2id$v=19$m=65536,t=3,p=4$wagCPXjifgvUFBzq4hqe3w$CYaIb8sB+wtD+Vu/P4uod1+Qof8h+1g7bbDlBID48Rc",
+        "disabled": False,
+    }
+}
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class TokenData(BaseModel):
+    username: str | None = None
+
+
+class User(BaseModel):
+    username: str
+    email: str | None = None
+    full_name: str | None = None
+    disabled: bool | None = None
+
+
+class UserInDB(User):
+    hashed_password: str
+
+
+password_hash = PasswordHash.recommended()
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+def verify_password(plain_password, hashed_password):
+    return password_hash.verify(plain_password, hashed_password)
+
+
+def get_password_hash(password):
+    return password_hash.hash(password)
+
+
+def get_user(db, username: str):
+    if username in db:
+        user_dict = db[username]
+        return UserInDB(**user_dict)
+
+
+def authenticate_user(fake_db, username: str, password: str):
+    user = get_user(fake_db, username)
+    if not user:
+        return False
+    if not verify_password(password, user.hashed_password):
+        return False
+    return user
+
+
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"}
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+        token_data = TokenData(username=username)
+    except InvalidTokenError:
+        raise credentials_exception
+    user = get_user(fake_users_db, token_data.username)
+    if user is None:
+        raise credentials_exception
+    return user
+
+
+async def get_current_active_user(current_user: Annotated[User, Depends(get_current_user)]):
+    if current_user.disabled:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
+
+@app.post("/token")
+async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
+    user = authenticate_user(fake_users_db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
+    return Token(access_token=access_token, token_type="bearer")
+
+
+@app.get("/users/me", response_model=User)
+async def read_users_me(current_user: Annotated[User, Depends(get_current_active_user)]):
+    return current_user
+
+
+@app.get("/users/me/items")
+async def read_own_items(current_user: Annotated[User, Depends(get_current_active_user)]):
+    return [{"item_id": "Foo", "owner": current_user.username}]</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">username:</label>
+            <label slot="labels">password:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/token">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="username" value="johndoe">
+            <input slot="inputs" type="password" name="password" value="secret">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/users/me">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <script>
+            document.currentScript.previousElementSibling.querySelector('button').addEventListener('click', function(event) {
+                event.target.dataset.headers = `{"Authorization": "Bearer ${sessionStorage.getItem('access_token')}"}`;
+            });
+        </script>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/users/me/items">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <script>
+            document.currentScript.previousElementSibling.querySelector('button').addEventListener('click', function(event) {
+                event.target.dataset.headers = `{"Authorization": "Bearer ${sessionStorage.getItem('access_token')}"}`;
+            });
+        </script>
+
+        <h2>Обновление <i>операции пути</i> <code>/token</code></h2>
+        <p>Создайте <code>timedelta</code> со временем истечения срока действия токена.</p>
+        <p>Создайте реальный токен доступа JWT и верните его.</p>
+<pre data-line="129-140" class="line-numbers"><code class="language-python">from datetime import datetime, timedelta, timezone
+from typing import Annotated
+
+import jwt
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.middleware.cors import CORSMiddleware
+from jwt.exceptions import InvalidTokenError
+from pwdlib import PasswordHash
+from pydantic import BaseModel
+
+# to get a string like this run:
+# openssl rand -hex 32
+SECRET_KEY = "0841f597ccfb421b46b2d518600c2dcf5a18c799ded3239648f46d3b692efcaf"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+
+fake_users_db = {
+    "johndoe": {
+        "username": "johndoe",
+        "full_name": "John Doe",
+        "email": "johndoe@example.com",
+        "hashed_password": "$argon2id$v=19$m=65536,t=3,p=4$wagCPXjifgvUFBzq4hqe3w$CYaIb8sB+wtD+Vu/P4uod1+Qof8h+1g7bbDlBID48Rc",
+        "disabled": False,
+    }
+}
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class TokenData(BaseModel):
+    username: str | None = None
+
+
+class User(BaseModel):
+    username: str
+    email: str | None = None
+    full_name: str | None = None
+    disabled: bool | None = None
+
+
+class UserInDB(User):
+    hashed_password: str
+
+
+password_hash = PasswordHash.recommended()
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+def verify_password(plain_password, hashed_password):
+    return password_hash.verify(plain_password, hashed_password)
+
+
+def get_password_hash(password):
+    return password_hash.hash(password)
+
+
+def get_user(db, username: str):
+    if username in db:
+        user_dict = db[username]
+        return UserInDB(**user_dict)
+
+
+def authenticate_user(fake_db, username: str, password: str):
+    user = get_user(fake_db, username)
+    if not user:
+        return False
+    if not verify_password(password, user.hashed_password):
+        return False
+    return user
+
+
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"}
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+        token_data = TokenData(username=username)
+    except InvalidTokenError:
+        raise credentials_exception
+    user = get_user(fake_users_db, token_data.username)
+    if user is None:
+        raise credentials_exception
+    return user
+
+
+async def get_current_active_user(current_user: Annotated[User, Depends(get_current_user)]):
+    if current_user.disabled:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
+
+@app.post("/token")
+async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
+    user = authenticate_user(fake_users_db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
+    return Token(access_token=access_token, token_type="bearer")
+
+
+@app.get("/users/me", response_model=User)
+async def read_users_me(current_user: Annotated[User, Depends(get_current_active_user)]):
+    return current_user
+
+
+@app.get("/users/me/items")
+async def read_own_items(current_user: Annotated[User, Depends(get_current_active_user)]):
+    return [{"item_id": "Foo", "owner": current_user.username}]</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">username:</label>
+            <label slot="labels">password:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/token">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="username" value="johndoe">
+            <input slot="inputs" type="password" name="password" value="secret">
+
+            <button slot="buttons" data-type="formdata">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/users/me">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <script>
+            document.currentScript.previousElementSibling.querySelector('button').addEventListener('click', function(event) {
+                event.target.dataset.headers = `{"Authorization": "Bearer ${sessionStorage.getItem('access_token')}"}`;
+            });
+        </script>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/users/me/items">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <script>
+            document.currentScript.previousElementSibling.querySelector('button').addEventListener('click', function(event) {
+                event.target.dataset.headers = `{"Authorization": "Bearer ${sessionStorage.getItem('access_token')}"}`;
+            });
+        </script>
+
+        <h3>Технические подробности о JWT ключе <code>sub</code></h3>
+        <p>В спецификации JWT говорится, что существует ключ <code>sub</code>, содержащий субъект токена.</p>
+        <p>Его использование необязательно, но это именно то место, куда вы должны поместить идентификатор
+        пользователя, и поэтому мы здесь его и используем.</p>
+        <p>JWT может использоваться и для других целей, помимо идентификации пользователя и предоставления ему
+        возможности выполнять операции непосредственно в вашем API.</p>
+        <p>Например, вы могли бы определить «автомобиль» или «запись в блоге».</p>
+        <p>Затем вы могли бы добавить права доступа к этой сущности, например «управлять» (для автомобиля)
+        или «редактировать» (для блога).</p>
+        <p>Затем вы могли бы передать этот JWT-токен пользователю (или боту), и они использовали бы его для выполнения
+        определенных действий (управление автомобилем или редактирование записи в блоге), даже не имея учетной записи,
+        просто используя JWT-токен, сгенерированный вашим API.</p>
+        <p>Используя эти идеи, JWT можно применять для гораздо более сложных сценариев.</p>
+        <p>В отдельных случаях несколько сущностей могут иметь один и тот же идентификатор, скажем <code>foo</code>
+        (пользователь <code>foo</code>, автомобиль <code>foo</code> и запись в блоге <code>foo</code>).</p>
+        <p>Поэтому, чтобы избежать коллизий идентификаторов, при создании JWT-токена для пользователя можно добавить
+        префикс <code>username</code> к значению ключа <code>sub</code>. Таким образом, в данном примере значение
+        <code>sub</code> было бы <code>username:johndoe</code>.</p>
+        <p>Важно помнить, что ключ <code>sub</code> должен иметь уникальный идентификатор для всего приложения
+        и представлять собой строку.</p>
+
+        <h2>Продвинутое использование <code>scopes</code></h2>
+        <p>В OAuth2 существует понятие «диапазоны» («<code>scopes</code>»).</p>
+        <p>С их помощью можно добавить определенный набор разрешений к JWT-токену.</p>
+        <p>Затем вы можете передать этот токен непосредственно пользователю или третьей стороне для взаимодействия
+        с вашим API с определенным набором ограничений.</p>
+        <p>О том, как их использовать и как они интегрированы в <b>FastAPI</b>, читайте далее в
+        <b>Расширенном руководстве пользователя</b>.</p>
+
+        <h2>Резюме</h2>
+        <p>С учетом того, что вы видели до сих пор, вы можете создать безопасное приложение <b>FastAPI</b>, используя
+        такие стандарты, как OAuth2 и JWT.</p>
+        <p>Практически в любой фреймворке работа с безопасностью довольно быстро превращается в сложную тему.</p>
+        <p>Многие пакеты, сильно упрощающие эту задачу, вынуждены идти на многочисленные компромиссы с моделью данных,
+        с базой данных и с доступным функционалом. Некоторые из этих пакетов, которые пытаются уж слишком все упростить,
+        имеют даже «дыры» в системе безопасности.</p>
+        <p><b>FastAPI</b> не делает уступок ни одной базе данных, модели данных или инструментарию.</p>
+        <p>Он предоставляет вам полную свободу действий, позволяя выбирать то, что лучше всего подходит для вашего
+        проекта.</p>
+        <p>Вы можете напрямую использовать многие хорошо поддерживаемые и широко распространенные пакеты,
+        такие как <code>pwdlib</code> и <code>PyJWT</code>, поскольку <b>FastAPI</b> не требует сложных механизмов
+        для интеграции внешних пакетов.</p>
+        <p>Напротив, он предоставляет инструменты, позволяющие максимально упростить этот процесс без ущерба
+        для гибкости, надежности и безопасности.</p>
+        <p>При этом вы можете использовать и реализовывать безопасные стандартные протоколы, такие как OAuth2,
+        относительно простым способом.</p>
+        <p>В <b>Расширенном руководстве пользователя</b> вы можете узнать больше о том, как использовать «диапазоны»
+        («<code>scopes</code>») OAuth2 для создания более точно настроенной системы разрешений в соответствии с теми же
+        стандартами. OAuth2 с диапазонами - это механизм, используемый многими крупными провайдерами сервиса
+        аутентификации, такими как Facebook, Google, GitHub, Microsoft, X (Twitter) и др., для авторизации сторонних
+        приложений на взаимодействие с их API от имени их пользователей.</p>
     </article>
 </body>
 </html>
