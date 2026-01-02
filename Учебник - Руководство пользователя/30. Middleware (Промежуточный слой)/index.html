@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Middleware (Промежуточный слой)</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Middleware (Промежуточный слой)</h1>
+        <p>Вы можете добавить промежуточный слой (middleware) в <b>FastAPI</b> приложение.</p>
+        <p>«Middleware» это функция, которая выполняется с каждым запросом до его обработки какой-либо конкретной
+        <i>операции пути</i>. А также с каждым ответом перед его возвращением.</p>
+        <ul>
+            <li>
+                <p>Она принимает каждый поступающий <b>запрос</b>.</p>
+            </li>
+            <li>
+                <p>Может что-то сделать с этим <b>запросом</b> или выполнить любой нужный код.</p>
+            </li>
+            <li>
+                <p>Затем передать <b>запрос</b> для последующей обработки (какой-либо <i>операции пути</i>).</p>
+            </li>
+            <li>
+                <p>Получает <b>ответ</b> (от <i>операции пути</i>).</p>
+            </li>
+            <li>
+                <p>Может что-то сделать с этим <b>ответом</b> или выполнить любой нужный код.</p>
+            </li>
+            <li>
+                <p>И возвращает <b>ответ</b>.</p>
+            </li>
+        </ul>
+        <div class="admonition note">
+            <h3>Технические детали</h3>
+            <p>Если у вас есть зависимости с <code>yield</code>, то код выхода (код после <code>yield</code>) будет
+            выполняться <i>после</i> middleware.</p>
+            <p>Если были какие-либо фоновые задачи (рассматриваются в разделе
+            <a target="_blank" href="https://fastapi.tiangolo.com/ru/tutorial/background-tasks/">Фоновые задачи</a>, вы
+            увидите это позже), они будут запущены <i>после</i> всех middleware.</p>
+        </div>
+
+        <h2>Создание middleware</h2>
+        <p>Для создания middleware используйте декоратор <code>@app.middleware('http')</code>.</p>
+        <p>Функция middleware получает:</p>
+        <ul>
+            <li>
+                <p><code>request</code> (объект запроса).</p>
+            </li>
+            <li>
+                <p>Функцию <code>call_next</code>, которая получает <code>reqeust</code> в качестве параметра.</p>
+                <ul>
+                    <li>
+                        <p>Эта функция передает <code>request</code> соответствующей <i>операции пути</i>.</p>
+                    </li>
+                    <li>
+                        <p>Затем она возвращает ответ <code>response</code>, сгенерированный <i>операцией пути</i>.</p>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <p>Также имеется возможность видоизменить <code>response</code>, перед тем как его вренуть.</p>
+            </li>
+        </ul>
+<pre data-line="8-9, 11, 14" class="line-numbers"><code class="language-python">import time
+
+from fastapi import FastAPI, Request
+
+app = FastAPI()
+
+
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    start_time = time.perf_counter()
+    response = await call_next(request)
+    process_time = time.perf_counter() - start_time
+    response.headers["X-Process-Time"] = str(process_time)
+    return response</code></pre>
+        <div class="admonition tip">
+            <h3>Примечание</h3>
+            <p>Имейте в виду, что можно добавлять свои собственные заголовки
+            <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers">при помощи префикса «X-»</a>.</p>
+            <p>Если же вы хотите добавить собственные заголовки, которые клиент сможет увидеть в браузере, то вам
+            потребуется добавить их в настройках CORS
+            (<a target="_blank" href="index.htmlhttps://fastapi.tiangolo.com/ru/tutorial/cors/">CORS (Cross-Origin Resource Sharing)</a>),
+            используя параметр <code>expose_headers</code>, см. документацию
+            <a target="_blank" href="https://www.starlette.dev/middleware/#corsmiddleware">Starlette's CORS docs</a>.</p>
+        </div>
+        <div class="admonition note">
+            <h3>Технические детали</h3>
+            <p>Вы также можете использовать <code>from starlette.requests import Request</code>.</p>
+            <p><b>FastAPI</b> предоставляет такой доступ для удобства разработчиков. Но, на самом деле, это <code>Request</code>
+            из Starlette.</p>
+        </div>
+
+        <h3>До и после <code>response</code></h3>
+        <p>Вы можете добавить код, использующий <code>request</code> до передачи его какой-либо <i>операции пути</i>.</p>
+        <p>А также после формирования <code>response</code>, до того, как вы его вернете.</p>
+        <p>Например, вы можете добавить собственный заголовок <code>X-Process-Time</code>, содержащий время в секундах,
+        необходимое для обработки запроса и генерации ответа:</p>
+<pre data-line="10, 12-13" class="line-numbers"><code class="language-python">import time
+
+from fastapi import FastAPI, Request
+
+app = FastAPI()
+
+
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    start_time = time.perf_counter()
+    response = await call_next(request)
+    process_time = time.perf_counter() - start_time
+    response.headers["X-Process-Time"] = str(process_time)
+    return response</code></pre>
+        <div class="admonition tip">
+            <h3>Примечание</h3>
+            <p>Мы используем <a target="_blank" href="https://docs.python.org/3/library/time.html#time.perf_counter">time.perfect_counter()</a>
+            вместо <code>time.time()</code> для обеспечения большей точности наших примеров.</p>
+        </div>
+
+        <h2>Порядок выполнения нескольких middleware</h2>
+        <p>Когда вы добавляете несколько middleware с помощью декоратора <code>@app.middleware()</code> или метода
+        <code>app.add_middleware()</code>, каждое новое middleware оборачивает приложение, формируя стек. Последнее
+        добавленное middleware - самое внешнее (<i>outermost</i>), а первое - самое внутреннее (<code>innermost</code>).</p>
+        <p>На пути обработки запроса сначала выполняет самое внешнее middleware.</p>
+        <p>На пути формирования ответа оно выполняется последним.</p>
+        <p>Например:</p>
+<pre><code class="language-python">app.add_middleware(MiddlewareA)
+app.add_middleware(MiddlewareB)</code></pre>
+        <p>Это приводит к следующему порядку выполнения:</p>
+        <ul>
+            <li>
+                <p><b>Запрос:</b> MiddlewareB → MiddlewareA → маршрут</p>
+            </li>
+            <li>
+                <p><b>Ответ:</b> маршрут → MiddlewareA → MiddlewareB</p>
+            </li>
+        </ul>
+        <p>Такое стековое поведение обеспечивает предсказуемый и управляемый порядок выполнения middleware.</p>
+
+        <h2>Другие middleware</h2>
+        <p>О других middleware вы можете узнать больше в разделе
+        <a target="_blank" href="https://fastapi.tiangolo.com/ru/advanced/middleware/">Advanced User Guide: Advanced Middleware</a>.</p>
+        <p>В следующем разделе вы можете прочитать, как настроить
+        <abbr title="Cross-Origin Resource Sharing - совместное использование ресурсов между источниками">CORS</abbr> с помощью middleware.</p>
+    </article>
+</body>
+</html>
