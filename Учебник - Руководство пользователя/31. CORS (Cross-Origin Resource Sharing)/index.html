@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CORS (Cross-Origin Resource sharing)</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>CORS (Cross-Origin Resource sharing)</h1>
+        <p><a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS">Понятие CORS или «Cross-Origin Resource Sharing»</a>
+        относится к ситуациям, при которых запущенный в браузере фронтенд содержит JavaScript-код, который взаимодействует
+        с бэкендом, находящимся на другом «источнике» («origin»).</p>
+
+        <h2>Источник</h2>
+        <p>Источник - это совокупность протокола (<code>http</code>, <code>https</code>), домена (<code>myapp.com</code>,
+        <code>localhost</code>, <code>localhost.tiangolo.com</code>) и порта (<code>80</code>, <code>443</code>,
+        <code>8080</code>).</p>
+        <p>Поэтому это три разных источника:</p>
+        <ul>
+            <li>
+                <p><code>http://localhost</code></p>
+            </li>
+            <li>
+                <p><code>https://localhost</code></p>
+            </li>
+            <li>
+                <p><code>http://localhost:8080</code></p>
+            </li>
+        </ul>
+        <p>Даже если они все расположены в <code>localhost</code>, они используют разные протоколы или порты, а значит,
+        являются разными источниками.</p>
+
+        <h2>Шаги</h2>
+        <p>Допустим, у вас есть фронтенд, запущенный в браузере по адресу <code>http://localhost:8080</code>, и его
+        JavaScript-код пытается взаимодействовать с бэкендом, запущенным по адресу <code>http://localhost</code>
+        (поскольку мы не указали порт, браузер по умолчанию будет использовать порт <code>80</code>).</p>
+        <p>Затем браузер отправит на бэкенд на <code>:80</code> HTTP-запрос <code>OPTIONS</code>, и если бэкенд
+        вернет соответствующие HTTP-заголовки, авторизующие взаимодействие с другим источником (<code>http://localhost:8080</code>),
+        то браузер на <code>:8080</code> разрешит JavaScript на фронтенде отправить свой запрос на бэкенд на <code>:80</code>.</p>
+        <p>Чтобы это работало, у бэкенда на <code>:80</code> должен быть список «разрешенных источников»
+        («allowed origins»).</p>
+        <p>В таком случае этот список должен содержать <code>http://localhost:8080</code>, чтобы фронтенд
+        на <code>:8080</code> работал корректно.</p>
+
+        <h2>Подстановочный символ «*»</h2>
+        <p>В качестве списка источников можно указать подстановочный символ <code>«*»</code> («wildcard»),
+        чтобы разрешить любые источники.</p>
+        <p>Но тогда будут разрешены только некоторые виды взаимодействия, и все, что связано с учетными данными,
+        будет исключено: куки, HTTP-заголовки Authorization, как при использовании Bearer-токенов, и т.п.</p>
+        <p>Поэтому, чтобы все работало корректно, лучше явно указать список разрешенных источников.</p>
+
+        <h2>Использование CORSMiddleware</h2>
+        <p>Вы можете настроить это в вашем <b>FastAPI</b>-приложении, используя <code>CORSMiddleware</code>.</p>
+        <ul>
+            <li>
+                <p>Импортируйте <code>CORSMiddleware</code>.</p>
+            </li>
+            <li>
+                <p>Создайте список разрешенных источников (в виде строк).</p>
+            </li>
+            <li>
+                <p>Добавьте его как «middleware» (промежуточный слой) к вашему <b>FastAPI</b>-приложению.</p>
+            </li>
+        </ul>
+        <p>Вы также можете указать, разрешает ли ваш бэкенд использование:</p>
+        <ul>
+            <li>
+                <p>Учетных данных (HTTP-заголовки Authorization, куки и т.п.).</p>
+            </li>
+            <li>
+                <p>Отдельных HTTP-методов (<code>POST</code>, <code>PUT</code>) или всех вместе, используя <code>«*»</code>.</p>
+            </li>
+            <li>
+                <p>Отдельных HTTP-заголовков или всех вместе, используя <code>«*»</code>.</p>
+            </li>
+        </ul>
+<pre data-line="2, 6-16" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+@app.get("/")
+async def main():
+    return {"message": "Hello World"}</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p><code>CORSMiddleware</code> использует «запрещающие» значения по умолчанию, поэтому вам нужно явным
+        образом разрешить использование отдельных источников, методов или заголовков, чтобы браузеры могли использовать
+        их в кросс-доменном контексте.</p>
+        <p>Поддерживаются следующие аргументы:</p>
+        <ul>
+            <li>
+                <p><code>allow_origins</code> - Список источников, на которые разрешено выполнять кросс-доменные
+                запросы. Например, <code>["https://example.org", "https://www.example.org"]</code>. Можно использовать
+                <code>["*"]</code>, чтобы разрешить любые источники.</p>
+            </li>
+            <li>
+                <p><code>allow_origin_regex</code> - Регулярное выражение для определения источников, на которые
+                разрешено выполнять кросс-доменные запросы. Например, <code>"https://.*\.example\.org"</code>.</p>
+            </li>
+            <li>
+                <p><code>allow_methods</code> - Список HTTP-методов, которые разрешены для кросс-платформенных запросов.
+                По умолчанию <code>["GET"]</code>. Можно использовать <code>["*"]</code>, чтобы разрешить все стандартные
+                методы.</p>
+            </li>
+            <li>
+                <p><code>allow_headers</code> - Список HTTP-заголовков запроса, которые должны поддерживаться при
+                кросс-доменных запросах. По умолчанию <code>[]</code>. Можно использовать <code>["*"]</code>, чтобы
+                разрешить все заголовки. Заголовки <code>Accept</code>, <code>Accept-Language</code>, и <code>Content-Type</code>
+                всегда разрешены для
+                <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS#simple_requests">простых CORS-запросов</a>.</p>
+            </li>
+            <li>
+                <p><code>allow_credentials</code> - Указывает, что куки разрешены в кросс-доменных запросах. По умолчанию
+                <code>False</code>.</p>
+                <p>Ни один из параметров <code>allow_origins</code>, <code>allow_methods</code> и <code>allow_headers</code>
+                не может быть установлен в <code>["*"]</code>, если <code>allow_credentials</code> имеет значение <code>True</code>.
+                Все они должны быть
+                <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS#credentialed_requests_and_wildcards">указаны явно</a>.</p>
+            </li>
+            <li>
+                <p><code>expose_headers</code> - Указывает любые заголовки ответа, которые должны быть доступны браузеру.
+                По умолчанию <code>[]</code>.</p>
+            </li>
+            <li>
+                <p><code>max_age</code> - Устанавливает максимальное время в секундах, в течение которого браузер
+                кеширует CORS-ответы. По умолчанию <code>600</code>.</p>
+            </li>
+        </ul>
+        <p><code>CORSMiddleware</code> отвечает на два типа HTTP-запросов...</p>
+
+        <h3>CORS-запросы с предварительной проверкой</h3>
+        <p>Это любые <code>OPTIONS</code>-запросы с заголовками <code>Origin</code> и <code>Access-Control-Request-Method</code>.</p>
+        <p>В этом случае middleware перехватит входящий запрос и отправит соответствующие CORS-заголовки в ответе,
+        а также ответ <code>200</code> или <code>400</code> в информационных целях.</p>
+
+        <h3>Простые запросы</h3>
+        <p>Любые запросы с заголовком <code>Origin</code>. В этом случае middleware передаст запрос дальше, как обычно,
+        но добавит соответствующие CORS-заголовки к ответу.</p>
+
+        <h2>Больше информации</h2>
+        <p>Для получения более подробной информации о
+        <abbr title="Cross-Origin Resource Sharing - совместное использование ресурсов между источниками">CORS</abbr>
+        обратитесь к
+        <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS">документации CORS от Mozilla</a>.</p>
+        <div class="admonition note">
+            <h3>Технические детали</h3>
+            <p>Вы также можете использовать <code>from starlette.middleware.cors import CORSMiddleware</code>.</p>
+            <p><b>FastAPI</b> предоставляет несколько middleware в <code>fastapi.middleware</code> только для вашего
+            удобства как разработчика. Но большинство доступных middleware взяты напрямую из Starlette.</p>
+        </div>
+    </article>
+</body>
+</html>
