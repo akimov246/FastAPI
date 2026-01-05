@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SQL (реляционные) базы данных</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>SQL (реляционные) базы данных</h1>
+        <p><b>FastAPI</b> не требует использовать SQL (реляционную) базу данных. Но вы можете использовать любую
+        базу данных, которую хотите.</p>
+        <p>Здесь мы рассмотрим пример с использованием
+        <a target="_blank" href="https://sqlmodel.tiangolo.com/">SQLModel</a>.</p>
+        <p><b>SQLModel</b> построен поверх <a target="_blank" href="https://www.sqlalchemy.org/">SQLAlchemy</a> и
+        Pydantic. Его создал тот же автор, что и <b>FastAPI</b>, чтобы он идеально подходил для приложений FastAPI,
+        которым нужны <b>SQL базы данных</b>.</p>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Вы можете использовать любую другую библиотеку для работы с SQL или NoSQL базами данных (иногда
+            их называют <abbr title="Object Relational Mapper — Объектно-реляционный маппер: термин для библиотеки, где некоторые классы представляют SQL-таблицы, а экземпляры представляют строки в этих таблицах">«ORMs»</abbr>,
+            FastAPI ничего не навязывает.</p>
+        </div>
+        <p>Так как SQLModel основан на SQLAlchemy, вы можете легко использовать <b>любую поддерживаемую</b>
+        SQLAlchemy базу данных (а значит, и поддерживаемую SQLModel), например:</p>
+        <ul>
+            <li>
+                <p>PostgreSQL</p>
+            </li>
+            <li>
+                <p>MySQL</p>
+            </li>
+            <li>
+                <p>SQLite</p>
+            </li>
+            <li>
+                <p>Oracle</p>
+            </li>
+            <li>
+                <p>Microsoft SQL Server, и т.д.</p>
+            </li>
+        </ul>
+        <p>В этом примере мы будем использовать <b>SQLite</b>, потому что она использует один файл и имеет встроенную
+        поддержку в Python. Так что вы можете скопировать этот пример и запустить его как есть.</p>
+        <p>Позже, для продакшн-приложения, возможно, вы захотите использовать серверную базу данных, например
+        <b>PostgreSQL</b>.</p>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Существует официальный генератор проектов на <b>FastAPI</b> и <b>PostgreSQL</b>, включающий frontend
+            и другие инструменты:
+            <a target="_blank" href="https://github.com/fastapi/full-stack-fastapi-template">https://github.com/fastapi/full-stack-fastapi-template</a>.</p>
+        </div>
+        <p>Это очень простое и короткое руководство. Если вы хотите узнать больше о базах данных в целом, об SQL
+        или о более продвинутых возможностях, обратитесь к
+        <a target="_blank" href="https://sqlmodel.tiangolo.com/">документации SQLModel</a>.</p>
+
+        <h2>Установка <code>SQLModel</code></h2>
+        <p>Сначала убедитесь, что вы создали виртуальное окружение, активировали его и затем установите <code>sqlmodel</code>:</p>
+        <pre><code class="language-bash">$ pip install sqlmodel</code></pre>
+
+        <h2>Создание приложения с единственной моделью</h2>
+        <p>Сначала мы создадим самую простую первую версию приложения с одной моделью <b>SQLModel</b>.</p>
+        <p>Позже мы улучшим его, повысим безопасность и универсальность, добавив <b>несколько моделей</b>.</p>
+
+        <h3>Создание моделей</h3>
+        <p>Импортируйте <code>SQLModel</code> и создайте модель базы данных:</p>
+<pre data-line="22-26" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+from sqlmodel import SQLModel, Field, Session, create_engine, select
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class Hero(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    name: str = Field(index=True)
+    age: int | None = Field(default=None, index=True)
+    secret_name: str
+
+# Code below omitted 👇</code></pre>
+        <p>Класс <code>Hero</code> очень похож на Pydantic (фактически, под капотом, <i>это и есть модель Pydantic</i>).</p>
+        <p>Есть несколько отличий:</p>
+        <ul>
+            <li>
+                <p><code>table=True</code> сообщает SQLModel, что это <i>модель-таблица</i>, она должна представлять
+                <b>таблицу</b> в SQL базе данных, это не просто <i>модель данных</i> (как обычный класс Pydantic).</p>
+            </li>
+            <li>
+                <p><code>Field(primary_key=True)</code> сообщает SQLModel, что <code>id</code> — это <b>первичный ключ</b>
+                в SQL базе данных (подробнее о первичных ключах SQL можно узнать в документации SQLModel).</p>
+                <p><b>Примечание:</b> Мы используем <code>int | None</code> для поля первичного ключа, чтобы в
+                Python-коде можно было <i>создать объект без <code>id</code></i> (<code>id=None</code>), предполагая,
+                что база данных <i>сгенерирует его при сохранении</i>. SQLModel понимает, что база данных предоставит
+                <code>id</code>, и <i>определяет столбец как <code>INTEGER</code> (не <code>NULL</code>)</i> в схеме
+                базы данных.
+                См. <a target="_blank" href="https://sqlmodel.tiangolo.com/tutorial/create-db-and-table/#primary-key-id">документацию SQLModel о первичных ключах</a>
+                для подробностей.</p>
+            </li>
+            <li>
+                <p><code>Field(index=True)</code> сообщает SQLModel, что нужно создать <b>SQL индекс</b> для этого
+                столбца, что позволит быстрее выполнять выборки при чтении данных, отфильтрованных по этому столбцу.</p>
+                <p>SQLModel будет знать, что объявленное как <code>str</code> станет SQL-столбцом типа <code>TEXT</code>
+                (или <code>VARCHAR</code>), в зависимости от базы данных).</p>
+            </li>
+        </ul>
+
+        <h3>Создание Engine</h3>
+        <p>Объект <code>engine</code> в SQLModel (под капотом это <code>engine</code> из SQLAlchemy) <b>удерживает соединение</b>
+        с базой данных.</p>
+        <p>У вас должен быть <b>один объект <code>engine</code></b> для всей кодовой базы, чтобы подключаться к одной
+        и той же базе данных.</p>
+<pre data-line="3-4, 6-7" class="line-numbers"><code class="language-python"># Code above omitted 👆
+
+sqlite_file_name = "database.db"
+sqlite_url = f"sqlite:///{sqlite_file_name}"
+
+connect_args = {"check_same_thread": False}
+engine = create_engine(sqlite_url, connect_args=connect_args)
+
+# Code below omitted 👇</code></pre>
+        <p>Параметр <code>check_same_thread=False</code> позволяет FastAPI использовать одну и ту же базу данных
+        SQLite в разных потоках. Это необходимо, так как <b>один запрос</b> может использовать
+        <b>больше одного потока</b> (например, в зависимостях).</p>
+        <p>Не волнуйтесь, с такой структурой кода мы позже обеспечим использование <b>одной <i>сессии</i> SQLModel на запрос</b>,
+        по сути именно этого и добивается <code>check_same_thread</code>.</p>
+
+        <h3>Создание таблиц</h3>
+        <p>Далее мы добавим функцию, которая использует <code>SQLModel.metadata.create_all(engine)</code>, чтобы
+        <b>создать таблицы</b> для всех <i>моделей-таблиц</i>.</p>
+<pre data-line="3-4" class="line-numbers"><code class="language-python"># Code above omitted 👆
+
+def create_db_and_tables():
+    SQLModel.metadata.create_all(engine)
+
+# Code below omitted 👇</code></pre>
+
+        <h3>Создание зависимости Session</h3>
+        <p><b><code>Session</code></b> хранит <b>объекты в памяти</b> и отслеживает необходимые изменения в данных,
+        затем <b>использует <code>engine</code></b> для общения с базой данных.</p>
+        <p>Мы создадим <b>зависимость</b> FastAPI с <code>yield</code>, которая будет предоставлять новую <code>Session</code>
+        для каждого запроса. Это и обеспечивает использование одной сессии на запрос.</p>
+        <p>Затем мы создадим объявленную (<code>Annotated</code>) зависимость <code>SessionDep</code>, чтобы
+        упростить остальной код, который будет использовать эту зависимость.</p>
+<pre data-line="3-5, 8" class="line-numbers"><code class="language-python"># Code above omitted 👆
+
+def get_session():
+    with Session(engine) as session:
+        yield session
+
+
+SessionDep = Annotated[Session, Depends(get_session)]
+
+# Code below omitted 👇</code></pre>
+
+        <h3>Создание таблиц базы данных при старте</h3>
+        <p>Мы создадим таблицы базы данных при запуске приложения.</p>
+<pre data-line="3-5" class="line-numbers"><code class="language-python"># Code above omitted 👆
+
+@app.on_event("startup")
+def on_startup():
+    create_db_and_tables()
+
+# Code below omitted 👇</code></pre>
+        <p>Здесь мы создаем таблицы в обработчике события запуска приложения.</p>
+        <p>Для продашкн вы, вероятно, будете использовать скрипт миграций, который выполняется до запуска приложения.</p>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>В SQLModel появятся утилиты миграций - обертки над Alembic, но пока вы можете использовать
+            <a target="_blank" href="https://alembic.sqlalchemy.org/en/latest/">Alembic</a> напрямую.</p>
+        </div>
+
+        <h3>Создание героя (Hero)</h3>
+        <p>Так как каждая модель SQLModel также является моделью Pydantic, вы можете использовать ее в тех же
+        <b>аннотациях типов</b>, в которых используете модели Pydantic.</p>
+        <p>Например, если вы объявите параметр типа <code>Hero</code>, он будет прочитан из <b>JSON body (тела запроса)</b>.</p>
+        <p>Аналогично вы можете объявить ее как <b>тип возвращаемого значения</b> функции, и тогда форма данных
+        отобразится в автоматически сгенерированной UI документации API.</p>
+<pre data-line="3-8" class="line-numbers"><code class="language-python"># Code above omitted 👆
+
+@app.post("/heroes")
+def create_hero(hero: Hero, session: SessionDep) -> Hero:
+    session.add(hero)
+    session.commit()
+    session.refresh(hero)
+    return hero
+
+# Code below omitted 👇</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">name:</label>
+            <label slot="labels">age:</label>
+            <label slot="labels">secret_name:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/heroes">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="name" value="John Doe">
+            <input slot="inputs" type="text" name="age" value="27">
+            <input slot="inputs" type="text" name="secret_name" value="Null Pointer">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>Здесь мы используем зависимость <code>SessionDep</code> (это <code>Session</code>), чтобы добавить нового
+        <code>Hero</code> в экземпляр <code>Session</code>, зафиксировать изменения в базе данных, обновить данные
+        в <code>hero</code> и затем вернуть его.</p>
+
+        <h3>Чтение героев</h3>
+        <p>Мы можем <b>читать</b> записи <code>Hero</code> из базы данных с помощью <code>select()</code>. Можно
+        добавить <code>limit</code> и <code>offset</code> для постраничного вывода результатов.</p>
+<pre data-line="4-5" class="line-numbers"><code class="language-python"># Code above omitted 👆
+
+@app.get("/heroes")
+def read_heroes(session: SessionDep, offset: int = 0, limit: Annotated[int, Query(le=100)] = 100) -> list[Hero]:
+    heroes = session.exec(select(Hero).offset(offset).limit(limit)).all()
+    return heroes
+
+# Code below omitted 👇</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/heroes?offset=0&limit=100">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h3>Чтение одного героя</h3>
+        <p>Мы можем <b>прочитать</b> одного <code>Hero</code>.</p>
+<pre data-line="5" class="line-numbers"><code class="language-python"># Code above omitted 👆
+
+@app.get("/heroes/{hero_id}")
+def read_hero(hero_id: int, session: SessionDep) -> Hero:
+    hero = session.get(Hero, hero_id)
+    if not hero:
+        raise HTTPException(status_code=404, detail="Hero not found")
+    return hero
+
+# Code below omitted 👇</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/heroes/1">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h3>Удаление героя</h3>
+        <p>Мы также можем <b>удалить</b> <code>Hero</code>.</p>
+<pre data-line="8" class="line-numbers"><code class="language-python"># Code above omitted 👆
+
+@app.delete("/heroes/{hero_id}")
+def delete_hero(hero_id: int, session: SessionDep):
+    hero = session.get(Hero, hero_id)
+    if not hero:
+        raise HTTPException(status_code=404, detail="Hero not found")
+    session.delete(hero)
+    session.commit()
+    return {"message": f'Hero «{hero.name}» has been deleted'}</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/heroes/1">
+            <input slot="inputs" type="text" name="method" value="DELETE">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h2>Обновление приложения с несколькими моделями</h2>
+        <p>Теперь давайте немного <b>отрефакторим</b> приложение, чтобы повысить <b>безопасность</b> и <b>универсальность</b>.</p>
+        <p>Если вы посмотрите на предыдущую версию, в UI видно, что до сих пор клиент мог сам задавать <code>id</code>
+        создаваемого <code>Hero</code>.</p>
+        <p>Так делать нельзя, иначе они могли бы перезаписать <code>id</code>, который уже присвоен в БД. Решение по
+        <code>id</code> должно приниматься <b>бэкендом</b> или <b>базой данных</b>, а <b>не клиентом</b>.</p>
+        <p>Кроме того, мы создаем для героя <code>secret_name</code>, но пока что возвращаем его повсюду — это не
+        очень <b>секретно</b>...</p>
+        <p>Мы исправим это, добавив несколько <b>дополнительных моделей</b>. Здесь SQLModel раскроется во всей красе.</p>
+
+        <h3>Создание нескольких моделей</h3>
+        <p>В <b>SQLModel</b> любая модель с <code>table=True</code> — это <b>модель-таблица</b>.</p>
+        <p>Любая модель без <code>table=True</code> — это <b>модель данных</b>, по сути обычная модель Pydantic
+        (с парой небольших дополнений).</p>
+        <p>С SQLModel мы можем использовать <b>наследование</b>, чтобы <b>избежать дублирования</b> полей.</p>
+
+        <h4><code>HeroBase</code> — базовый класс</h4>
+        <p>Начнем с модели <code>HeroBase</code>, которая содержит <b>общие поля</b> для всех моделей:</p>
+        <ul>
+            <li>
+                <p><code>name</code></p>
+            </li>
+            <li>
+                <p><code>age</code></p>
+            </li>
+        </ul>
+<pre data-line="" class="line-numbers"><code class="language-python"># Code above omitted 👆
+
+class HeroBase(SQLModel):
+    name: str = Field(index=True)
+    age: int | None = Field(default=None, index=True)
+
+# Code below omitted 👇</code></pre>
+
+        <h4><code>Hero</code> — <i>модель-таблица</i></h4>
+        <p>Далее создадим <code>Hero</code>, фактическую <i>модель-таблицу</i>, с <b>дополнительными полями</b>,
+        которых может не быть в других моделях:</p>
+        <ul>
+            <li>
+                <p><code>id</code></p>
+            </li>
+            <li>
+                <p><code>secret_name</code></p>
+            </li>
+        </ul>
+        <p>Так как <code>Hero</code> наследуется от <code>HeroBase</code>, он <b>также</b> имеет <b>поля</b>, объявленные
+        в <code>HeroBase</code>, поэтому все поля <code>Hero</code>:</p>
+        <ul>
+            <li>
+                <p><code>id</code></p>
+            </li>
+            <li>
+                <p><code>name</code></p>
+            </li>
+            <li>
+                <p><code>age</code></p>
+            </li>
+            <li>
+                <p><code>secret_name</code></p>
+            </li>
+        </ul>
+<pre data-line="8-10" class="line-numbers"><code class="language-python"># Code above omitted 👆
+
+class HeroBase(SQLModel):
+    name: str = Field(index=True)
+    age: int | None = Field(default=None, index=True)
+
+
+class Hero(HeroBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    secret_name: str
+
+# Code below omitted 👇</code></pre>
+
+        <h4><code>HeroPublic</code> — публичная <i>модель данных</i></h4>
+        <p>Далее мы создадим модель <code>HeroPublic</code>, именно она будет <b>возвращаться</b> клиентам API.</p>
+        <p>У нее те же поля, что и у <code>HeroBase</code>, поэтому она не включает <code>secret_name</code>.</p>
+        <p>Наконец-то личность наших героев защищена!</p>
+        <p>Также здесь заново объявляется <code>id: int</code>. Тем самым мы заключаем <b>контракт</b> с клиентами API:
+        они всегда могут рассчитывать, что поле <code>id</code> присутствует и это <code>int</code> (никогда не <code>None</code>).</p>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Гарантия того, что в модели ответа значение всегда присутствует и это <code>int</code> (не <code>None</code>),
+            очень полезна для клиентов API — так как можно писать гораздо более простой код.</p>
+            <p>Кроме того, <b>автоматически сгенерированные клиенты</b> будут иметь более простые интерфейсы,
+            и разработчикам, взаимодействующим с вашим API, будет работать значительно комфортнее.</p>
+        </div>
+        <p>Все поля <code>HeroPublic</code> такие же, как в <code>HeroBase</code>, а <code>id</code> объявлен как
+        <code>int</code> (не <code>None</code>):</p>
+        <ul>
+            <li>
+                <p><code>id</code></p>
+            </li>
+            <li>
+                <p><code>name</code></p>
+            </li>
+            <li>
+                <p><code>age</code></p>
+            </li>
+        </ul>
+<pre data-line="13-14" class="line-numbers"><code class="language-python"># Code above omitted 👆
+
+class HeroBase(SQLModel):
+    name: str = Field(index=True)
+    age: int | None = Field(default=None, index=True)
+
+
+class Hero(HeroBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    secret_name: str
+
+
+class HeroPublic(HeroBase):
+    id: int
+
+# Code below omitted 👇</code></pre>
+
+        <h4><code>HeroCreate</code> — <i>модель данных</i> для создания героя</h4>
+        <p>Теперь создадим модель <code>HeroCreate</code>, она будет <b>валидировать</b> данные от клиентов.</p>
+        <p>У нее те же поля, что и у <code>HeroBase</code>, а также есть <code>secret_name</code>.</p>
+        <p>Теперь, когда клиенты <b>создают нового героя</b>, они будут отправлять <code>secret_name</code>, он
+        сохранится в базе данных, но не будет возвращаться клиентам в API.</p>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Так следует обрабатывать <b>пароли</b>: принимать их, но не возвращать в API.</p>
+            <p>Также перед сохранением значения паролей нужно <b>хешировать, никогда не храните их в открытом виде.</b></p>
+        </div>
+        <p>Поля <code>HeroCreate</code>:</p>
+        <ul>
+            <li>
+                <p><code>name</code></p>
+            </li>
+            <li>
+                <p><code>age</code></p>
+            </li>
+            <li>
+                <p><code>secret_name</code></p>
+            </li>
+        </ul>
+<pre data-line="17-18" class="line-numbers"><code class="language-python"># Code above omitted 👆
+
+class HeroBase(SQLModel):
+    name: str = Field(index=True)
+    age: int | None = Field(default=None, index=True)
+
+
+class Hero(HeroBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    secret_name: str
+
+
+class HeroPublic(HeroBase):
+    id: int
+
+
+class HeroCreate(HeroBase):
+    secret_name: str
+
+# Code below omitted 👇</code></pre>
+
+        <h4><code>HeroUpdate</code> — <i>модель данных</i> для обновления героя</h4>
+        <p>В предыдущей версии приложения у нас не было способа <b>обновлять героя</b>, но теперь, с <b>несколькими
+        моделями</b>, мы можем это сделать.</p>
+        <p><i>Модель данных</i> <code>HeroUpdate</code> особенная: у нее <b>те же поля</b>, что и для создания нового
+        героя, но все поля <b>необязательные</b> (у всех есть значение по умолчанию). Таким образом, при обновлении
+        героя можно отправлять только те поля, которые нужно изменить.</p>
+        <p>Поскольку <b>фактически меняются все поля</b> (их тип теперь включает <code>None</code>, и по умолчанию
+        они равны <code>None</code>), нам нужно <b>переобъявить</b> их.</p>
+        <p>Наследовать от <code>HeroBase</code> не обязательно, так как мы заново объявляем все поля. Я оставлю
+        наследование для единообразия, но это не необходимо. Скорее дело вкуса.</p>
+        <p>Поля <code>HeroUpdate</code>:</p>
+        <ul>
+            <li>
+                <p><code>name</code></p>
+            </li>
+            <li>
+                <p><code>age</code></p>
+            </li>
+            <li>
+                <p><code>secret_name</code></p>
+            </li>
+        </ul>
+<pre data-line="21-24" class="line-numbers"><code class="language-python"># Code above omitted 👆
+
+class HeroBase(SQLModel):
+    name: str = Field(index=True)
+    age: int | None = Field(default=None, index=True)
+
+
+class Hero(HeroBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    secret_name: str
+
+
+class HeroPublic(HeroBase):
+    id: int
+
+
+class HeroCreate(HeroBase):
+    secret_name: str
+
+
+class HeroUpdate(HeroBase):
+    name: str | None = None
+    age: int | None = None
+    secret_name: str | None = None
+
+# Code below omitted 👇</code></pre>
+
+        <h3>Создание с <code>HeroCreate</code> и возврат с <code>HeroPublic</code></h3>
+        <p>Теперь, когда у нас есть <b>несколько моделей</b>, мы можем обновить части приложения, которые их используют.</p>
+        <p>Мы получаем в запросе <i>модель данных</i> <code>HeroCreate</code> и на ее основе создаем <i>модель-таблицу</i>
+        <code>Hero</code>.</p>
+        <p>Новая <i>модель-таблица</i> <code>Hero</code> будет иметь поля, отправленные клиентом, а также <code>id</code>,
+        сгенерированный базой данных.</p>
+        <p>Затем возвращаем из функции ту же <i>модель-таблицу</i> <code>Hero</code> как есть. Но так как мы
+        объявили <code>response_model</code> с <i>моделью-данных</i> <code>HeroPublic</code>, <b>FastAPI</b> использует
+        <code>HeroPublic</code> для валидации и сериализации данных.</p>
+<pre data-line="3-5" class="line-numbers"><code class="language-python"># Code above omitted 👆
+
+@app.post("/heroes", response_model=HeroPublic)
+def create_hero(hero: HeroCreate, session: SessionDep):
+    db_hero = Hero.model_validate(hero)
+    session.add(db_hero)
+    session.commit()
+    session.refresh(db_hero)
+    return db_hero
+
+# Code below omitted 👇</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">name:</label>
+            <label slot="labels">age:</label>
+            <label slot="labels">secret_name:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/heroes">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="name" value="John Doe">
+            <input slot="inputs" type="text" name="age" value="27">
+            <input slot="inputs" type="text" name="secret_name" value="Null Pointer">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Теперь мы используем <code>response_model=HeroPublic</code> вместо <b>аннотации типа возвращаемого значения</b>
+            <code>-> HeroPublic</code>, потому что фактически возвращаемое значение — это <i>не</i> <code>HeroPublic</code>.</p>
+            <p>Если бы мы объявили <code>-> HeroPublic</code>, ваш редактор кода и линтер справедливо пожаловался бы,
+            что вы возвращаете <code>Hero</code>, а не <code>HeroPublic</code>.</p>
+            <p>Объявляя модель в <code>response_model</code>, мы говорим <b>FastAPI</b> сделать свое дело, не вмешиваясь
+            в аннотации типов и работу редактора кода и других инструментов.</p>
+        </div>
+
+        <h3>Чтение героев с <code>HeroPublic</code></h3>
+        <p>Аналогично мы можем <b>читать</b> <code>Hero</code> — снова используем <code>response_model=list[HeroPublic]</code>,
+        чтобы данные валидировались и сериализовывались корректно.</p>
+<pre data-line="3" class="line-numbers"><code class="language-python"># Code above omitted 👆
+
+@app.get("/heroes", response_model=list[HeroPublic])
+def read_heroes(session: SessionDep, offset: int = 0, limit: Annotated[int, Query(le=100)] = 100):
+    heroes = session.exec(select(Hero).offset(offset).limit(limit)).all()
+    return heroes
+
+# Code below omitted 👇</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/heroes">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h3>Чтение одного героя с <code>HeroPublic</code></h3>
+        <p>Мы можем <b>прочитать</b> одного героя:</p>
+<pre data-line="5" class="line-numbers"><code class="language-python"># Code above omitted 👆
+
+@app.get("/heroes/{hero_id}", response_model=HeroPublic)
+def read_hero(hero_id: int, session: SessionDep):
+    hero = session.get(Hero, hero_id)
+    if not hero:
+        raise HTTPException(status_code=404, detail="Hero not found")
+    return hero
+
+# Code below omitted 👇</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/heroes/1">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h3>Обновление героя с <code>HeroUpdate</code></h3>
+        <p>Мы можем <b>обновить героя</b>. Для этого используем HTTP операцию <code>PATCH</code>.</p>
+        <p>В коде мы получаем <code>dict</code> со всеми данными, отправленными клиентом — <b>только с данными,
+        отправленными клиентом</b>, исключая любые значения, которые были бы там лишь как значения по умолчанию.
+        Для этого мы используем <code>exclude_unset=True</code>. Это главный трюк.</p>
+        <p>Затем мы используем <code>hero_db.sqlmodel_update(hero_data)</code>, чтобы обновить <code>hero_db</code>
+        данными из <code>hero_data</code>.</p>
+<pre data-line="3-4, 8-9" class="line-numbers"><code class="language-python"># Code above omitted 👆
+
+@app.patch("/heroes/{hero_id}", response_model=HeroPublic)
+def update_hero(hero_id: int, hero: HeroUpdate, session: SessionDep):
+    hero_db = session.get(Hero, hero_id)
+    if not hero_db:
+        raise HTTPException(status_code=404, detail="Hero not found")
+    hero_data = hero.model_dump(exclude_unset=True)
+    hero_db.sqlmodel_update(hero_data)
+    session.add(hero_db)
+    session.commit()
+    session.refresh(hero_db)
+    return hero_db
+
+# Code below omitted 👇</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">name:</label>
+            <label slot="labels">age:</label>
+            <label slot="labels">secret_name:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/heroes/1">
+            <input slot="inputs" type="text" name="method" value="PATCH">
+            <input slot="inputs" type="text" name="name" value="Ivan">
+            <input slot="inputs" type="text" name="age" value="88">
+            <input slot="inputs" type="text" name="secret_name" value="Vanya">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h3>Снова удаление героя</h3>
+        <p>Операция <b>удаления</b> героя остается практически прежней.</p>
+        <p>Желание <i>«отрефакторить все»</i> на этот раз остается неудовлетворенным.</p>
+<pre data-line="8" class="line-numbers"><code class="language-python"># Code above omitted 👆
+
+@app.delete("/heroes/{hero_id}")
+def delete_hero(hero_id: int, session: SessionDep):
+    hero = session.get(Hero, hero_id)
+    if not hero:
+        raise HTTPException(status_code=404, detail="Hero not found")
+    session.delete(hero)
+    session.commit()
+    return {"message": f'Hero «{hero.name}» has been deleted'}</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/heroes/1">
+            <input slot="inputs" type="text" name="method" value="DELETE">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h2>Резюме</h2>
+        <p>Вы можете использовать <a target="_blank" href="https://sqlmodel.tiangolo.com/">SQLModel</a> для взаимодействия
+        с SQL базой данных и упростить код с помощью <i>моделей данных</i> и <i>моделей-таблиц</i>.</p>
+        <p>Гораздо больше вы можете узнать в документации <b>SQLModel</b>, там есть более подробный
+        <a target="_blank" href="https://sqlmodel.tiangolo.com/tutorial/fastapi/">мини-туториал по использованию SQLModel с <b>FastAPI</b>.</a></p>
+
+<pre class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+from sqlmodel import SQLModel, Field, Session, create_engine, select
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+class HeroBase(SQLModel):
+    name: str = Field(index=True)
+    age: int | None = Field(default=None, index=True)
+
+
+class Hero(HeroBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    secret_name: str
+
+
+class HeroPublic(HeroBase):
+    id: int
+
+
+class HeroCreate(HeroBase):
+    secret_name: str
+
+
+class HeroUpdate(HeroBase):
+    name: str | None = None
+    age: int | None = None
+    secret_name: str | None = None
+
+
+sqlite_file_name = "database.db"
+sqlite_url = f"sqlite:///{sqlite_file_name}"
+
+connect_args = {"check_same_thread": False}
+engine = create_engine(sqlite_url, connect_args=connect_args)
+
+
+def create_db_and_tables():
+    SQLModel.metadata.create_all(engine)
+
+
+def get_session():
+    with Session(engine) as session:
+        yield session
+
+
+SessionDep = Annotated[Session, Depends(get_session)]
+
+
+@app.on_event("startup")
+def on_startup():
+    create_db_and_tables()
+
+
+@app.post("/heroes", response_model=HeroPublic)
+def create_hero(hero: HeroCreate, session: SessionDep):
+    db_hero = Hero.model_validate(hero)
+    session.add(db_hero)
+    session.commit()
+    session.refresh(db_hero)
+    return db_hero
+
+
+@app.get("/heroes", response_model=list[HeroPublic])
+def read_heroes(session: SessionDep, offset: int = 0, limit: Annotated[int, Query(le=100)] = 100):
+    heroes = session.exec(select(Hero).offset(offset).limit(limit)).all()
+    return heroes
+
+
+@app.get("/heroes/{hero_id}", response_model=HeroPublic)
+def read_hero(hero_id: int, session: SessionDep):
+    hero = session.get(Hero, hero_id)
+    if not hero:
+        raise HTTPException(status_code=404, detail="Hero not found")
+    return hero
+
+
+@app.delete("/heroes/{hero_id}")
+def delete_hero(hero_id: int, session: SessionDep):
+    hero = session.get(Hero, hero_id)
+    if not hero:
+        raise HTTPException(status_code=404, detail="Hero not found")
+    session.delete(hero)
+    session.commit()
+    return {"message": f'Hero «{hero.name}» has been deleted'}
+
+
+@app.patch("/heroes/{hero_id}", response_model=HeroPublic)
+def update_hero(hero_id: int, hero: HeroUpdate, session: SessionDep):
+    hero_db = session.get(Hero, hero_id)
+    if not hero_db:
+        raise HTTPException(status_code=404, detail="Hero not found")
+    hero_data = hero.model_dump(exclude_unset=True)
+    hero_db.sqlmodel_update(hero_data)
+    session.add(hero_db)
+    session.commit()
+    session.refresh(hero_db)
+    return hero_db</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">name:</label>
+            <label slot="labels">age:</label>
+            <label slot="labels">secret_name:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/heroes">
+            <input slot="inputs" type="text" name="method" value="POST">
+            <input slot="inputs" type="text" name="name" value="John Doe">
+            <input slot="inputs" type="text" name="age" value="27">
+            <input slot="inputs" type="text" name="secret_name" value="Null Pointer">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/heroes?offset=0&limit=100">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/heroes/1">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/heroes/1">
+            <input slot="inputs" type="text" name="method" value="DELETE">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+            <label slot="labels">name:</label>
+            <label slot="labels">age:</label>
+            <label slot="labels">secret_name:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/heroes/2">
+            <input slot="inputs" type="text" name="method" value="PATCH">
+            <input slot="inputs" type="text" name="name" value="Ivan">
+            <input slot="inputs" type="text" name="age" value="88">
+            <input slot="inputs" type="text" name="secret_name" value="Vanya">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+    </article>
+</body>
+</html>
