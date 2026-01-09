@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Большие приложения, в которых много файлов</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Большие приложения, в которых много файлов</h1>
+        <p>При построении приложения или веб-API нам редко удается поместить все в один файл.</p>
+        <p><b>FastAPI</b> предоставляет удобный инструментарий, который позволяет нам структурировать приложение,
+        сохраняя при этом всю необходимую гибкость.</p>
+        <div class="admonition info">
+            <h3>Примечание</h3>
+            <p>Если вы раньше использовали Flask, то это аналог шаблонов Flask (Flask's Blueprints).</p>
+        </div>
+
+        <h2>Пример структуры приложения</h2>
+        <p>Давайте предположим, что наше приложение имеет следующую структуру:</p>
+<pre><code class="language-">.
+├── app
+│   ├── __init__.py
+│   ├── main.py
+│   ├── dependencies.py
+│   └── routers
+│   │   ├── __init__.py
+│   │   ├── items.py
+│   │   └── users.py
+│   └── internal
+│       ├── __init__.py
+│       └── admin.py</code></pre>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Обратите внимание, что в каждом каталоге и подкаталоге имеется файл <code>__init__.py</code></p>
+            <p>Это как раз то, что позволяет импортировать код из одного файла в другой.</p>
+            <p>Например, в файле <code>app/main.py</code> может быть следующая строка:</p>
+            <pre><code class="language-python">from app.routers import items</code></pre>
+        </div>
+        <ul>
+            <li>
+                <p>Все помешается в каталоге <code>app</code>. В нем также находится пустой файл <code>app/__init__.py</code>.
+                Таким образом, <code>app</code> является «Python-пакетом» (коллекцией модулей Python).</p>
+            </li>
+            <li>
+                <p>Он содержит файл <code>app/main.py</code>. Данный файл является частью пакета (т.е. находится
+                внутри каталога, содержащего файл <code>__init__.py)</code>, и, соответственно, он является
+                модулем пакета: <code>app.main</code>.</p>
+            </li>
+            <li>
+                <p>Он также содержит файл <code>app/dependencies.py</code>, который также, как и <code>app/main.py</code>,
+                является модулем: <code>app.dependencies</code>.</p>
+            </li>
+            <li>
+                <p>Здесь также находится подкаталог <code>app/routers/</code>, содержащий <code>__init__.py</code>.
+                Он является суб-пакетом: <code>app.routers</code>.</p>
+            </li>
+            <li>
+                <p>Файл <code>app/routers/items.py</code> находится внутри пакета <code>app/routers/</code>. Таким
+                образом, он является суб-модулем: <code>app.routers.items</code>.</p>
+            </li>
+            <li>
+                <p>Точно также <code>app/routers/users.py</code> является еще одним суб-модулем: <code>app.routers.users</code>.</p>
+            </li>
+            <li>
+                <p>Подкаталог <code>app/internal/</code>, содержащий файл <code>__init__.py</code>, является еще одним
+                суб-пакетом: <code>app.internal</code>.</p>
+            </li>
+            <li>
+                <p>А файл <code>app/internal/admin.py</code> является еще одним суб-модулем: <code>app.internal.admin</code>.</p>
+            </li>
+        </ul>
+        <img src="images/package.drawio.svg" style="width: 100%">
+        <p>Та же самая структура приложения, но с комментариями:</p>
+<pre><code class="language-">.
+├── app                  # "app" пакет
+│   ├── __init__.py      # этот файл превращает "app" в "Python-пакет"
+│   ├── main.py          # модуль "main", напр.: import app.main
+│   ├── dependencies.py  # модуль "dependencies", напр.: import app.dependencies
+│   └── routers          # суб-пакет "routers"
+│   │   ├── __init__.py  # превращает "routers" в суб-пакет
+│   │   ├── items.py     # суб-модуль "items", напр.: import app.routers.items
+│   │   └── users.py     # суб-модуль "users", напр.: import app.routers.users
+│   └── internal         # суб-пакет "internal"
+│       ├── __init__.py  # превращает "internal" в суб-пакет
+│       └── admin.py     # суб-модуль "admin", напр.: import app.internal.admin</code></pre>
+
+        <h2><code>APIRouter</code></h2>
+        <p>Давайте предположим, что для работы с пользователями используется отдельный файл (суб-модуль)
+        <code>/app/routers/users.py</code>.</p>
+        <p>Для лучшей организации приложения, вы хотите отделить операции пути, связанные с пользователями,
+        от остального кода.</p>
+        <p>Но так, чтобы эти операции по-прежнему оставались частью <b>FastAPI</b> приложения/веб-API
+        (частью одного пакета).</p>
+        <p>С помощью <code>APIRouter</code> вы можете создать <i>операции пути (эндпоинты)</i> для данного модуля.</p>
+
+        <h3>Импорт <code>APIRouter</code></h3>
+        <p>Точно также, как и в случае с классом <code>FastAPI</code>, вам нужно импортировать и создать объект класса
+        <code>APIRouter</code>.</p>
+<div class="filename"><h4>app/routers/users.py</h4></div>
+<pre data-line="1, 3" class="line-numbers"><code class="language-python">from fastapi import APIRouter
+
+router = APIRouter()
+
+
+@router.get("/users", tags=["users"])
+async def read_users():
+    return [{"username": "Rick"}, {"username": "Morty"}]
+
+
+@router.get("/users/me", tags=["users"])
+async def read_user_me():
+    return {"username": "fakecurrentuser"}
+
+
+@router.get("/users/{username}", tags=["users"])
+async def read_user(username: str):
+    return {"username": username}</code></pre>
+
+        <h3>Создание <i>эндпоинтов</i> с помощью <code>APIRouter</code></h3>
+        <p>В дальнейшем используйте <code>APIRouter</code> для объявления <i>эндпоинтов</i>, точно так же,
+        как вы используете класс <code>FastAPI</code>:</p>
+<div class="filename"><h4>app/routers/users.py</h4></div>
+<pre data-line="6, 11, 16" class="line-numbers"><code class="language-python">from fastapi import APIRouter
+
+router = APIRouter()
+
+
+@router.get("/users", tags=["users"])
+async def read_users():
+    return [{"username": "Rick"}, {"username": "Morty"}]
+
+
+@router.get("/users/me", tags=["users"])
+async def read_user_me():
+    return {"username": "fakecurrentuser"}
+
+
+@router.get("/users/{username}", tags=["users"])
+async def read_user(username: str):
+    return {"username": username}</code></pre>
+        <p>Вы можете думать об <code>APIRouter</code> как об «уменьшенной версии» класса FastAPI.</p>
+        <p><code>APIRouter</code> поддерживает все те же самые опции.</p>
+        <p><code>APIRouter</code> поддерживает все те же самые параметры, такие как <code>parameters</code>,
+        <code>responses</code>, <code>dependencies</code>, <code>tags</code> и т.д.</p>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>В данном примере, в качестве названия переменной используется <code>router</code>, но вы можете использовать
+            любое другое имя.</p>
+        </div>
+        <p>Мы собираемся подключить данный <code>APIRouter</code> к нашему основному приложению на <code>FastAPI</code>,
+        но сначала давайте проверим зависимости и создадим еще один модуль с <code>APIRouter</code>.</p>
+
+        <h2>Зависимости</h2>
+        <p>Нам понадобятся некоторые зависимости, которые мы будем использовать в разных местах нашего приложения.</p>
+        <p>Мы поместим их в отдельный модуль <code>dependencies</code> (<code>app/dependencies.py</code>).</p>
+        <p>Теперь мы воспользуемся простой зависимостью, чтобы прочитать кастомизированный <code>X-Token</code>
+        из заголовка:</p>
+<div class="filename"><h4>app/dependencies.py</h4></div>
+<pre data-line="3, 6-8" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import Header, HTTPException
+
+
+async def get_token_header(x_token: Annotated[str, Header()]):
+    if x_token != "fake-super-secret-token":
+        raise HTTPException(status_code=400, detail="X-Token header invalid")
+
+
+async def get_query_token(token: str):
+    if token != "jessica":
+        raise HTTPException(status_code=400, detail="No Jessica token provided")</code></pre>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Для простоты мы воспользовались неким воображаемым заголовком.</p>
+            <p>В реальных случаях для получения наилучших результатов используйте интегрированные
+            <a target="_blank" href="../29.%20Настройка%20авторизации/29.1.%20Настройка%20авторизации/index.html">утилиты безопасности</a>.</p>
+        </div>
+
+        <h2>Еще один модуль с <code>APIRouter</code></h2>
+        <p>Давайте также предположим, что у нас есть <i>эндпоинты</i>, отвечающие за обработку «items», и они находятся
+        в модуле <code>app/routers/items.py</code>.</p>
+        <p>У вас определены следующие <i>операции пути (эндпоинты)</i>:</p>
+        <ul>
+            <li>
+                <p><code>/items</code></p>
+            </li>
+            <li>
+                <p><code>/items/{item_id}</code></p>
+            </li>
+        </ul>
+        <p>Тут все точно также, как и в ситуации с <code>app/routers/users.py</code>.</p>
+        <p>Но теперь мы хотим поступить немного умнее и слегка упростить код.</p>
+        <p>Мы знаем, что все <i>эндпоинты</i> данного модуля имеют некоторые общие свойства:</p>
+        <ul>
+            <li>
+                <p>Префикс пути: <code>/items</code>.</p>
+            </li>
+            <li>
+                <p>Теги: (один единственный тег: <code>items</code>).</p>
+            </li>
+            <li>
+                <p>Дополнительные ответы (responses).</p>
+            </li>
+            <li>
+                <p>Зависимости: использование созданной нами зависимости <code>X-Token</code>.</p>
+            </li>
+        </ul>
+        <p>Таким образом, вместо того чтобы добавлять все эти свойства в функцию каждого отдельного <i>эндпоинта</i>,
+        мы добавим их в <code>APIRouter</code>.</p>
+<div class="filename"><h4>app/routers/items.py</h4></div>
+<pre data-line="5-10, 16, 21" class="line-numbers"><code class="language-python">from fastapi import APIRouter, Depends, HTTPException
+
+from ..dependencies import get_token_header
+
+router = APIRouter(
+    prefix="/items",
+    tags=["items"],
+    dependencies=[Depends(get_token_header)],
+    responses={404: {"description": "Not found"}}
+)
+
+
+fake_items_db = {"plumbus": {"name": "Plumbus"}, "gun": {"name": "Portal Gun"}}
+
+
+@router.get("/")
+async def read_items():
+    return fake_items_db
+
+
+@router.get("/{item_id}")
+async def read_item(item_id: str):
+    if item_id not in fake_items_db:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return {"name": fake_items_db[item_id]["name"], "item_id": item_id}
+
+
+@router.put(
+    "/{item_id}",
+    tags=["custom"],
+    responses={403: {"description": "Operation forbidden"}}
+)
+async def update_item(item_id: str):
+    if item_id != "plumbus":
+        raise HTTPException(status_code=403, detail="You can only update the item: plumbus")
+    return {"item_id": item_id, "name": "The great Plumbus"}</code></pre>
+        <p>Так как каждый <i>эндпоинт</i> начинается с символа <code>/</code>:</p>
+<pre data-line="1" class="line-numbers"><code class="language-python">@router.get("/{item_id}")
+async def read_item(item_id: str):
+    ...</code></pre>
+        <p>... То префикс не должен заканчиваться символом <code>/</code>.</p>
+        <p>В нашем случае префиксом является <code>/items</code>.</p>
+        <p>Мы также может добавить в наш маршрутизатор (router) список <code>тегов</code> (<code>tags</code>) и
+        дополнительных <code>ответов</code> (<code>responses</code>), которые являются общими для каждого
+        <i>эндпоинта</i>.</p>
+        <p>И еще мы можем добавить в наш маршрутизатор список <code>зависимостей</code>, которые должны вызываться
+        при каждом обращении к <i>эндпоинтам</i>.</p>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Обратите внимание, что также, как и в случае с зависимостями в декораторах <i>эндпоинтов</i>
+            (<a target="_blank" href="../28.%20Зависимости/28.4.%20Зависимости%20в%20декораторах%20операции%20пути/index.html">зависимости в декораторах операции пути</a>),
+            никакого значения в <i>функцию эндпоинта</i> передано не будет.</p>
+        </div>
+        <p>В результате мы получим следующие эндпоинты:</p>
+        <ul>
+            <li>
+                <p><code>/items</code></p>
+            </li>
+            <li>
+                <p><code>/items/{item_id}</code></p>
+            </li>
+        </ul>
+        <p>... Как мы и планировали.</p>
+        <ul>
+            <li>
+                <p>Они будут помечены тегами из заданного списка, в нашем случае это <code>"items"</code>.</p>
+                <ul>
+                    <li>
+                        <p>Эти теги особенно полезны для системы автоматической интерактивной документации
+                        (с использованием OpenAPI).</p>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <p>Каждый из них будет включать предопределенные ответы <code>responses</code>.</p>
+            </li>
+            <li>
+                <p>Каждый <i>эндпоинт</i> будет иметь список зависимостей (<code>dependencies</code>), исполняемых
+                перед вызовом <i>эндпоинта</i>.</p>
+                <ul>
+                    <li>
+                        <p>Если вы определили зависимости в самой операции пути, <b>то она также будет выполнена</b>.</p>
+                    </li>
+                    <li>
+                        <p>Сначала выполняются зависимости маршрутизатора, затем выполняются
+                        <a target="_blank" href="../28.%20Зависимости/28.4.%20Зависимости%20в%20декораторах%20операции%20пути/index.html">зависимости в декораторе</a>,
+                        и, наконец, обычные параметрические зависимости.</p>
+                    </li>
+                    <li>
+                        <p>Вы также можете добавить
+                        <a target="_blank" href="https://fastapi.tiangolo.com/ru/advanced/security/oauth2-scopes/">зависимости <code>Security</code> и <code>scopes</code></a>.</p>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Например, с помощью зависимостей в <code>APIRouter</code> мы можем потребовать аутентификацию для доступа
+            ко всей группе <i>эндпоинтов</i>, не указывая зависимости для каждой отдельной функции <i>эндпоинта</i>.</p>
+        </div>
+        <div class="admonition note">
+            <h3>Заметка</h3>
+            <p>Параметры <code>prefix</code>, <code>tags</code>, <code>responses</code> и <code>dependencies</code>
+            относятся к функционалу <b>FastAPI</b>, помогающему избежать дублирования кода.</p>
+        </div>
+
+        <h3>Импорт зависимостей</h3>
+        <p>Наш код находится в модуле <code>app.routers.items</code> (файл <code>app/routers/items.py</code>).</p>
+        <p>И нам нужно вызвать функцию зависимости из модуля <code>app.dependencies</code> (файл
+        <code>app/dependencies.py</code>).</p>
+        <p>Мы используем операцию относительного импорта <code>..</code> для импорта зависимости:</p>
+<div class="filename"><h4>app/routers/items.py</h4></div>
+<pre data-line="3" class="line-numbers"><code class="language-python">from fastapi import APIRouter, Depends, HTTPException
+
+from ..dependencies import get_token_header
+
+router = APIRouter(
+    prefix="/items",
+    tags=["items"],
+    dependencies=[Depends(get_token_header)],
+    responses={404: {"description": "Not found"}}
+)
+
+
+fake_items_db = {"plumbus": {"name": "Plumbus"}, "gun": {"name": "Portal Gun"}}
+
+
+@router.get("/")
+async def read_items():
+    return fake_items_db
+
+
+@router.get("/{item_id}")
+async def read_item(item_id: str):
+    if item_id not in fake_items_db:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return {"name": fake_items_db[item_id]["name"], "item_id": item_id}
+
+
+@router.put(
+    "/{item_id}",
+    tags=["custom"],
+    responses={403: {"description": "Operation forbidden"}}
+)
+async def update_item(item_id: str):
+    if item_id != "plumbus":
+        raise HTTPException(status_code=403, detail="You can only update the item: plumbus")
+    return {"item_id": item_id, "name": "The great Plumbus"}</code></pre>
+
+        <h3>Как работает относительный импорт?</h3>
+        <p>Одна точка <code>.</code>, как в данном примере:</p>
+        <pre><code class="language-python">from .dependencies import get_token_header</code></pre>
+        <p>Означает:</p>
+        <ul>
+            <li>
+                <p>Начните с пакета, в котором находится данный модуль (файл <code>app/routers/items.py</code>
+                расположен в каталоге <code>app/routers/</code>)...</p>
+            </li>
+            <li>
+                <p>... Найдите модуль <code>dependencies</code> (файл <code>app/routers/dependencies.py</code>)...</p>
+            </li>
+            <li>
+                <p>... И импортируйте из него функцию <code>get_token_header</code>.</p>
+            </li>
+        </ul>
+        <p>К сожалению, такого файла не существует, и наши зависимости находятся в файле <code>app/dependencies.py</code>.</p>
+        <p>Вспомните, как выглядит файловая структура нашего приложения:</p>
+        <img src="images/package.drawio.svg" style="width: 100%">
+        <p>Две точки <code>..</code>, как в данном примере:</p>
+        <pre><code class="language-python">from ..dependencies import get_token_header</code></pre>
+        <p>Означают:</p>
+        <ul>
+            <li>
+                <p>Начните с пакета, в котором находится данный модуль (файл <code>app/routers/items.py</code>
+                находится в каталоге <code>app/routers/</code>)...</p>
+            </li>
+            <li>
+                <p>... Перейдите в родительский пакет (каталог <code>app/</code>)...</p>
+            </li>
+            <li>
+                <p>... Найдите в нем модуль <code>dependencies</code> (файл <code>app/dependencies.py</code>)...</p>
+            </li>
+            <li>
+                <p>... И импортируйте из него функцию <code>get_token_header</code>.</p>
+            </li>
+        </ul>
+        <p>Это работает верно!</p>
+        <p>Аналогично, если бы мы использовали три точки <code>...</code>, как здесь:</p>
+        <pre><code class="language-python">from ...dependencies import get_token_header</code></pre>
+        <p>То это бы означало:</p>
+        <ul>
+            <li>
+                <p>Начните с пакета, в котором находится данный модуль (файл <code>app/routers/items.py</code>
+                находится в каталоге <code>app/routers/</code>)...</p>
+            </li>
+            <li>
+                <p>... Перейдите в родительский пакет (каталог <code>app/</code>)...</p>
+            </li>
+            <li>
+                <p>... Затем перейдите в родительский пакет текущего пакета (такого пакета не существует, <code>app</code>
+                находится на самом верхнем уровне)...</p>
+            </li>
+            <li>
+                <p>... Найдите в нем модуль <code>dependencies</code> (файл <code>app/dependencies.py</code>)...</p>
+            </li>
+            <li>
+                <p>... И импортируйте из него функцию <code>get_token_header</code>.</p>
+            </li>
+        </ul>
+        <p>Это будет относиться к некоторому пакету, находящемуся на один уровень выше чем <code>app/</code>
+        и содержащему свой собственный файл <code>__init__.py</code>. Но ничего такого у нас нет. Поэтому это приведет
+        к ошибке в нашем примере.</p>
+        <p>Теперь вы знаете, как работает импорт в Python, и сможете использовать относительное импортирование
+        в своих собственных приложениях любого уровня сложности.</p>
+
+        <h3>Добавление пользовательских тегов (<code>tags</code>), ответов (<code>responses</code>) и зависимостей
+        (<code>dependencies</code>)</h3>
+        <p>Мы не будем добавлять префикс <code>/items</code> и список тегов <code>tags=["items"]</code> для каждого
+        <i>эндпоинта</i>, т.к. мы уже их добавили с помощью <code>APIRouter</code>.</p>
+        <p>Но помимо этого мы можем добавить новые теги для каждого отдельного <i>эндпоинта</i>, а также некоторые
+        дополнительные ответы (<code>responses</code>), характерные для данного <i>эндпоинта</i>:</p>
+<div class="filename"><h4>app/routers/items.py</h4></div>
+<pre data-line="30-31" class="line-numbers"><code class="language-python">from fastapi import APIRouter, Depends, HTTPException
+
+from ..dependencies import get_token_header
+
+router = APIRouter(
+    prefix="/items",
+    tags=["items"],
+    dependencies=[Depends(get_token_header)],
+    responses={404: {"description": "Not found"}}
+)
+
+
+fake_items_db = {"plumbus": {"name": "Plumbus"}, "gun": {"name": "Portal Gun"}}
+
+
+@router.get("/")
+async def read_items():
+    return fake_items_db
+
+
+@router.get("/{item_id}")
+async def read_item(item_id: str):
+    if item_id not in fake_items_db:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return {"name": fake_items_db[item_id]["name"], "item_id": item_id}
+
+
+@router.put(
+    "/{item_id}",
+    tags=["custom"],
+    responses={403: {"description": "Operation forbidden"}}
+)
+async def update_item(item_id: str):
+    if item_id != "plumbus":
+        raise HTTPException(status_code=403, detail="You can only update the item: plumbus")
+    return {"item_id": item_id, "name": "The great Plumbus"}</code></pre>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Последний <i>эндпоинт</i> будет иметь следующую комбинацию тегов: <code>["items", "custom"]</code>.</p>
+            <p>А также в его документации будет содержаться оба ответа: один для <code>404</code> и другой для
+            <code>403</code>.</p>
+        </div>
+
+        <h2>Модуль main в <code>FastAPI</code></h2>
+        <p>Теперь давайте посмотрим на модуль <code>app/main.py</code>.</p>
+        <p>Именно сюда вы импортируете и именно здесь вы используете класс <code>FastAPI</code>.</p>
+        <p>Это основной файл вашего приложения, который объединяет все в одно целое.</p>
+        <p>И теперь, когда большая часть логики приложения разделена на отдельные модули, основной файл <code>app/main.py</code>
+        будет достаточно простым.</p>
+
+        <h3>Импорт <code>FastAPI</code></h3>
+        <p>Импортируйте и создайте класс <code>FastAPI</code> как обычно.</p>
+        <p>Мы даже можем объявить
+        <a target="_blank" href="../28.%20Зависимости/28.5.%20Глобальные%20зависимости/index.html">глобальные зависимости</a>,
+        которые будут объединены с зависимостями для каждого отдельного маршрутизатора:</p>
+<div class="filename"><h4>app/main.py</h4></div>
+<pre data-line="1, 4, 8" class="line-numbers"><code class="language-python">from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
+
+from .dependencies import get_query_token, get_token_header
+from .internal import admin
+from .routers import items, users
+
+app = FastAPI(dependencies=[Depends(get_query_token)])
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+app.include_router(users.router)
+app.include_router(items.router)
+app.include_router(
+    admin.router,
+    prefix="/admin",
+    tags=["admin"],
+    dependencies=[Depends(get_token_header)],
+    responses={418: {"description": "I'm a teapot"}}
+)
+
+
+@app.get("/")
+async def root():
+    return {"message": "Hello Bigger Applications!"}</code></pre>
+
+        <h3>Импорт <code>APIRouter</code></h3>
+        <p>Теперь мы импортируем другие суб-модули, содержащие <code>APIRouter</code>:</p>
+<div class="filename"><h4>app/main.py</h4></div>
+<pre data-line="5-6" class="line-numbers"><code class="language-python">from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
+
+from .dependencies import get_query_token, get_token_header
+from .internal import admin
+from .routers import items, users
+
+app = FastAPI(dependencies=[Depends(get_query_token)])
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+app.include_router(users.router)
+app.include_router(items.router)
+app.include_router(
+    admin.router,
+    prefix="/admin",
+    tags=["admin"],
+    dependencies=[Depends(get_token_header)],
+    responses={418: {"description": "I'm a teapot"}}
+)
+
+
+@app.get("/")
+async def root():
+    return {"message": "Hello Bigger Applications!"}</code></pre>
+        <p>Так как файлы <code>app/routers/users.py</code> и <code>app/routers/items.py</code> являются суб-модулями
+        одного и того же Python-пакета <code>app</code>, то мы сможем их импортировать, воспользовавшись операцией
+        относительного импорта <code>.</code>.</p>
+
+        <h3>Как работает импорт?</h3>
+        <p>Данная строка кода:</p>
+        <pre><code class="language-python">from .routers import items, users</code></pre>
+        <p>Означает:</p>
+        <ul>
+            <li>
+                <p>Начните с пакета, в котором содержится данный модуль (файл <code>app/main.py</code> содержится
+                в каталоге <code>app/</code>)...</p>
+            </li>
+            <li>
+                <p>... Найдите суб-пакет <code>routers</code> (каталог <code>app/routers/</code>)...</p>
+            </li>
+            <li>
+                <p>... И из него импортируйте суб-модули <code>items</code> (файл <code>app/routers/items.py</code>)
+                и <code>users</code> (файл <code>app/routers/users.py</code>)...</p>
+            </li>
+        </ul>
+        <p>В модуле <code>items</code> содержится переменная <code>router</code> (<code>items.router</code>), та самая,
+        которую мы создали в файле <code>app/routers/items.py</code>, она является объектом класса <code>APIRouter</code>.</p>
+        <p>И затем мы сделаем то же самое для модуля <code>users</code>.</p>
+        <p>Мы также могли бы импортировать и другим методом:</p>
+        <pre><code class="language-python">from app.routers import items, users</code></pre>
+        <div class="admonition info">
+            <h3>Примечание</h3>
+            <p>Первая версия является примером относительного импорта:</p>
+            <pre><code class="language-python">from .routers import items, users</code></pre>
+            <p>Вторая версия является примером абсолютного импорта:</p>
+            <pre><code class="language-python">from app.routers import items, users</code></pre>
+            <p>Узнать больше о пакетах и модулях в Python вы можете из
+            <a target="_blank" href="https://docs.python.org/3/tutorial/modules.html">официальной документации Python о модулях</a>.</p>
+        </div>
+
+        <h3>Избегайте конфликтов имен</h3>
+        <p>Вместо того чтобы импортировать только переменную <code>router</code>, мы импортируем непосредственно
+        суб-модуль <code>items</code>.</p>
+        <p>Мы делаем это потому, что у нас есть еще одна переменная <code>router</code> в суб-модуле <code>users</code>.</p>
+        <p>Если бы мы импортировали их одну за другой, как показано в примере:</p>
+<pre><code class="language-python">from .routers.items import router
+from .routers.users import router</code></pre>
+        <p>То переменная <code>router</code> из <code>users</code> переписала бы переменную <code>router</code>
+        из <code>items</code>, и у нас не было бы возможности использовать их одновременно.</p>
+        <p>Поэтому, для того чтобы использовать обе эти переменные в одном файле, мы импортировали соответствующие
+        суб-модули:</p>
+<div class="filename"><h4>app/main.py</h4></div>
+<pre data-line="6" class="line-numbers"><code class="language-python">from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
+
+from .dependencies import get_query_token, get_token_header
+from .internal import admin
+from .routers import items, users
+
+app = FastAPI(dependencies=[Depends(get_query_token)])
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+app.include_router(users.router)
+app.include_router(items.router)
+app.include_router(
+    admin.router,
+    prefix="/admin",
+    tags=["admin"],
+    dependencies=[Depends(get_token_header)],
+    responses={418: {"description": "I'm a teapot"}}
+)
+
+
+@app.get("/")
+async def root():
+    return {"message": "Hello Bigger Applications!"}</code></pre>
+
+        <h3>Подключение маршрутизаторов (<code>APIRouter</code>) для <code>users</code> и для <code>items</code></h3>
+        <p>Давайте подключим маршрутизаторы (<code>router</code>) из суб-модулей <code>users</code> и <code>items</code>:</p>
+<div class="filename"><h4>app/main.py</h4></div>
+<pre data-line="23-24" class="line-numbers"><code class="language-python">from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
+
+from .dependencies import get_query_token, get_token_header
+from .internal import admin
+from .routers import items, users
+
+app = FastAPI(dependencies=[Depends(get_query_token)])
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+app.include_router(users.router)
+app.include_router(items.router)
+app.include_router(
+    admin.router,
+    prefix="/admin",
+    tags=["admin"],
+    dependencies=[Depends(get_token_header)],
+    responses={418: {"description": "I'm a teapot"}}
+)
+
+
+@app.get("/")
+async def root():
+    return {"message": "Hello Bigger Applications!"}</code></pre>
+        <div class="admonition info">
+            <h3>Примечание</h3>
+            <p><code>users.router</code> содержит <code>APIRouter</code> из файла <code>app/routers/users.py</code>.</p>
+            <p>А <code>items.router</code> содержит <code>APIRouter</code> из файла <code>app/routers/items.py</code>.</p>
+        </div>
+        <p>С помощью <code>app.include_router()</code> мы можем добавить каждый из маршрутизаторов (<code>APIRouter</code>)
+        в основное приложение <code>FastAPI</code>.</p>
+        <p>Он подключит все маршруты заданного маршрутизатора к нашему приложению.</p>
+        <div class="admonition note">
+            <h3>Технические детали</h3>
+            <p>Фактически, внутри он создаст все <i>операции пути</i> для каждой операции пути объявленной в <code>APIRouter</code>.</p>
+            <p>И под капотом все будет работать так, как будто бы мы имеем дело с одним файлом приложения.</p>
+        </div>
+        <div class="admonition note">
+            <h3>Заметка</h3>
+            <p>При подключении маршрутизаторов не стоит беспокоиться о производительности.</p>
+            <p>Операция подключения займет микросекунды и понадобится только при запуске приложения.</p>
+            <p>Таким образом, это не повлияет на производительность.</p>
+        </div>
+
+        <h3>Подключение <code>APIRouter</code> с пользовательскими префиксом (<code>prefix</code>), тегами (<code>tags</code>),
+        ответами (<code>responses</code>) и зависимостями (<code>dependencies</code>)</h3>
+        <p>Теперь давайте представим, что ваша организация передала вам файл
+        <code>app/internal/admin.py</code>.</p>
+        <p>Он содержит <code>APIRouter</code> с некоторыми <i>эндпоинтами</i> администрирования, которые ваша организация
+        использует для нескольких проектов.</p>
+        <p>В данном примере это сделано очень просто. Но давайте предположим, что поскольку файл используется для нескольких
+        проектов, то мы не можем модифицировать его, добавляя префиксы (<code>prefix</code>), зависимости
+        (<code>dependencies</code>), теги (<code>tags</code>) и т.д. непосредственно в <code>APIRouter</code>:</p>
+<div class="filename"><h4>app/internal/admin.py</h4></div>
+<pre data-line="3" class="line-numbers"><code class="language-python">from fastapi import APIRouter
+
+router = APIRouter()
+
+
+@router.post("/")
+async def update_admin():
+    return {"message": "Admin getting schwifty"}</code></pre>
+        <p>Но, несмотря на это, мы хотим использовать кастомный префикс (<code>prefix</code>) для подключенного
+        маршрутизатора (<code>APIRouter</code>), в результате чего, каждая <i>операция пути</i> будет начинаться с
+        <code>/admin</code>. Также мы хотим защитить наш маршрутизатор с помощью зависимостей, созданных для нашего
+        проекта. И еще мы хотим включить теги (<code>tags</code>) и ответы (<code>responses</code>).</p>
+        <p>Мы можем применить все вышеперечисленные настройки, не изменяя начальный <code>APIRouter</code>.
+        Нам всего лишь нужно передать нужные параметры в <code>app.include_router()</code>.</p>
+<div class="filename"><h4>app/main.py</h4></div>
+<pre data-line="27-30" class="line-numbers"><code class="language-python">from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
+
+from .dependencies import get_query_token, get_token_header
+from .internal import admin
+from .routers import items, users
+
+app = FastAPI(dependencies=[Depends(get_query_token)])
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+app.include_router(users.router)
+app.include_router(items.router)
+app.include_router(
+    admin.router,
+    prefix="/admin",
+    tags=["admin"],
+    dependencies=[Depends(get_token_header)],
+    responses={418: {"description": "I'm a teapot"}}
+)
+
+
+@app.get("/")
+async def root():
+    return {"message": "Hello Bigger Applications!"}</code></pre>
+        <p>Таким образом, оригинальный <code>APIRouter</code> не будет модифицирован, и мы сможем использовать файл
+        <code>app/internal/admin.py</code> сразу в нескольких проектах организации.</p>
+        <p>В результате, в нашем приложении каждый <i>эндпоинт</i> модуля <code>admin</code> будет иметь:</p>
+        <ul>
+            <li>
+                <p>Префикс <code>/admin</code>.</p>
+            </li>
+            <li>
+                <p>Тег <code>admin</code>.</p>
+            </li>
+            <li>
+                <p>Зависимость <code>get_token_header</code>.</p>
+            </li>
+            <li>
+                <p>Ответ <code>418</code>.</p>
+            </li>
+        </ul>
+        <p>Это будет иметь место исключительно для <code>APIRouter</code> в нашем приложении, и не затронет любой
+        другой код, использующий его.</p>
+        <p>Например, другие проекты, могут использовать тот же самый <code>APIRouter</code> с другими методами
+        аутентификации.</p>
+
+        <h3>Подключение отдельного <i>эндпоинта</i></h3>
+        <p>Мы также можем добавить <i>эндпоинт</i> непосредственно в основное приложение <code>FastAPI</code>.</p>
+        <p>Здесь мы это делаем... просто, чтобы показать, что это возможно:</p>
+<div class="filename"><h4>app/main.py</h4></div>
+<pre data-line="34-36" class="line-numbers"><code class="language-python">from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
+
+from .dependencies import get_query_token, get_token_header
+from .internal import admin
+from .routers import items, users
+
+app = FastAPI(dependencies=[Depends(get_query_token)])
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+app.include_router(users.router)
+app.include_router(items.router)
+app.include_router(
+    admin.router,
+    prefix="/admin",
+    tags=["admin"],
+    dependencies=[Depends(get_token_header)],
+    responses={418: {"description": "I'm a teapot"}}
+)
+
+
+@app.get("/")
+async def root():
+    return {"message": "Hello Bigger Applications!"}</code></pre>
+        <p>И это будет работать корректно вместе с другими <i>эндпоинтами</i>, добавленными с помощью
+        <code>app.include_router()</code>.</p>
+        <div class="admonition info">
+            <h3>Сложные технические детали</h3>
+            <p>Маршрутизаторы (<code>APIRouter</code>) не «монтируются» по-отдельности и не изолируются от остального
+            приложения.</p>
+            <p>Это происходит потому, что нужно включить их <i>эндпоинты</i> в OpenAPI схему и в интерфейс пользователя.</p>
+            <p>В силу того, что мы не можем их изолировать и «примонтировать» независимо от остальных, <i>эндпоинты</i>
+            клонируются (пересоздаются) и не подключаются напрямую.</p>
+        </div>
+
+        <h2>Проверка автоматической документации API</h2>
+        <p>Откройте документацию по адресу: <a target="_blank" href="http://127.0.0.1:8000/docs">http://127.0.0.1:8000/docs</a>.</p>
+        <p>Вы увидите автоматическую API документацию. Она включает в себя маршруты из суб-моделей, используя верные
+        маршруты, префиксы и теги.</p>
+
+        <h2>Подключение существующего маршрута через новый префикс (<code>prefix</code>)</h2>
+        <p>Вы можете использовать <code>.include_router()</code> несколько раз с одним и тем же маршрутом, применив
+        различные префиксы.</p>
+        <p>Это может быть полезным, если нужно предоставить доступ к одному и тому же API через различные префиксы,
+        например, <code>/api/v1</code> и <code>/api/latest</code>.</p>
+        <p>Это продвинутый способ, который вам может и не пригодиться. Мы приводим его на случай, если вдруг вам это
+        понадобится.</p>
+
+        <h2>Включение одного маршрутизатора (<code>APIRouter</code>) в другой</h2>
+        <p>Точно так же, как вы включаете <code>APIRouter</code> в приложение <code>FastAPI</code>, вы можете включить
+        <code>APIRouter</code> в другой <code>APIRouter</code>:</p>
+        <pre><code class="language-python">router.include_router(other_router)</code></pre>
+        <p>Удостоверьтесь, что вы сделали это до того, как подключить маршрутизатор (<code>router</code>) к вашему
+        <code>FastAPI</code> приложению, и <i>эндпоинты</i> маршрутизатора <code>other_router</code> были также
+        подключены.</p>
+
+        <h2>Эндпоинты</h2>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000?token=jessica">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/users?token=jessica">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/users/me?token=jessica">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/users/randomuser?token=jessica">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items?token=jessica">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons" data-headers='{"X-Token": "fake-super-secret-token"}'>Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/gun?token=jessica">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons" data-headers='{"X-Token": "fake-super-secret-token"}'>Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/items/plumbus?token=jessica">
+            <input slot="inputs" type="text" name="method" value="PUT">
+
+            <button slot="buttons" data-headers='{"X-Token": "fake-super-secret-token"}'>Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/admin?token=jessica">
+            <input slot="inputs" type="text" name="method" value="POST">
+
+            <button slot="buttons" data-headers='{"X-Token": "fake-super-secret-token"}'>Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+    </article>
+</body>
+</html>
