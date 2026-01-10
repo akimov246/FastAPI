@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Фоновые задачи</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Фоновые задачи</h1>
+        <p>Вы можете создавать фоновые задачи, которые будут выполняться после возврата ответа.</p>
+        <p>Это полезно для операций, которые должны произойти после HTTP-запроса, но клиенту не обязательно
+        ждать их завершения, чтобы получить ответ.</p>
+        <p>Например:</p>
+        <ul>
+            <li>
+                <p>Уведомления по электронной почте, отправляемые после выполнения действия:</p>
+                <ul>
+                    <li>
+                        <p>Так как подключение к почтовому серверу и отправка письма обычно «медленные» (несколько
+                        секунд), вы можете сразу вернуть ответ, а отправку уведомления выполнить в фоне.</p>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <p>Обработка данных:</p>
+                <ul>
+                    <li>
+                        <p>Например, если вы получаете файл, который должен пройти через медленный процесс, вы можете
+                        вернуть ответ «Accepted» (HTTP 202) и обработать файл в фоне.</p>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+
+        <h2>Использование <code>BackgroundTasks</code></h2>
+        <p>Сначала импортируйте <code>BackgroundTasks</code> и объявите параметр в вашей функции-обработчике пути
+        с типом <code>BackgroundTasks</code>:</p>
+<pre data-line="1, 28" class="line-numbers"><code class="language-python">from fastapi import FastAPI, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
+
+from sandbox.main import messages
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+def write_notification(email: str, message=""):
+    with open("log.txt", mode="a", encoding="utf-8") as email_file:
+        content = f"notification for {email}: {message}\n"
+        email_file.write(content)
+
+
+@app.post("/send-notification/{email}")
+async def send_notification(email: str, background_tasks: BackgroundTasks):
+    background_tasks.add_task(write_notification, email, message="some notification")
+    return {"message": "Notification sent in the background"}</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/send-notification/test@example.com">
+            <input slot="inputs" type="text" name="method" value="POST">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p><b>FastAPI</b> создаст объект типа <code>BackgroundTasks</code> для вас и передаст его через этот параметр.</p>
+
+        <h2>Создание функции для фоновой задачи</h2>
+        <p>Создайте функцию, которую нужно запустить как фоновую задачу.</p>
+        <p>Это обычная функция, которая может принимать параметры.</p>
+        <p>Это может быть как <code>async def</code>, так и обычная <code>def</code>, <b>FastAPI</b> знает, как корректно
+        ее выполнить.</p>
+        <p>В этом случае функция задачи будет записывать данные в файл (имитируя отправку письма).</p>
+        <p>Так как операция записи не использует <code>async</code> или <code>await</code>, мы определим функцию как
+        обычную <code>def</code>:</p>
+<pre data-line="21-24" class="line-numbers"><code class="language-python">from fastapi import FastAPI, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
+
+from sandbox.main import messages
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+def write_notification(email: str, message=""):
+    with open("log.txt", mode="a", encoding="utf-8") as email_file:
+        content = f"notification for {email}: {message}\n"
+        email_file.write(content)
+
+
+@app.post("/send-notification/{email}")
+async def send_notification(email: str, background_tasks: BackgroundTasks):
+    background_tasks.add_task(write_notification, email, message="some notification")
+    return {"message": "Notification sent in the background"}</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/send-notification/test@example.com">
+            <input slot="inputs" type="text" name="method" value="POST">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h2>Добавление фоновой задачи</h2>
+        <p>Внутри вашей функции-обработчика пути передайте функцию задачи объекту фоновых задач методом <code>.add_task()</code>:</p>
+<pre data-line="29" class="line-numbers"><code class="language-python">from fastapi import FastAPI, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
+
+from sandbox.main import messages
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+def write_notification(email: str, message=""):
+    with open("log.txt", mode="a", encoding="utf-8") as email_file:
+        content = f"notification for {email}: {message}\n"
+        email_file.write(content)
+
+
+@app.post("/send-notification/{email}")
+async def send_notification(email: str, background_tasks: BackgroundTasks):
+    background_tasks.add_task(write_notification, email, message="some notification")
+    return {"message": "Notification sent in the background"}</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/send-notification/test@example.com">
+            <input slot="inputs" type="text" name="method" value="POST">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p><code>.add_task()</code> принимает следующие аргументы:</p>
+        <ul>
+            <li>
+                <p>Функцию задачи, которую нужно выполнить в фоне (<code>write_notification</code>).</p>
+            </li>
+            <li>
+                <p>Последовательность позиционных аргументов, которые должны быть переданы функции задачи, в порядке
+                (<code>email</code>).</p>
+            </li>
+            <li>
+                <p>Любые именованные аргументы, которые должны быть переданы функции задачи
+                (<code>message="some notification"</code>).</p>
+            </li>
+        </ul>
+
+        <h2>Встраивание зависимостей</h2>
+        <p>Использование <code>BackgroundTasks</code> также работает с системой встраивания зависимостей, вы можете
+        объявить параметр типа <code>BackgroundTasks</code> на нескольких уровнях: в функции-обработчике пути, в зависимости
+        (dependable), в подзависимости и т.д.</p>
+        <p><b>FastAPI</b> знает, что делать в каждом случае и как переиспользовать один и тот же объект, так чтобы
+        все фоновые задачи были объединены и затем выполнены в фоне:</p>
+<pre data-line="26, 28, 34, 36" class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, BackgroundTasks, Depends
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+def write_log(message: str):
+    with open("log.txt", mode="a", encoding="utf-8") as log:
+        log.write(message)
+
+
+def get_query(background_tasks: BackgroundTasks, q: str | None = None):
+    if q:
+        message = f"found query: {q}\n"
+        background_tasks.add_task(write_log, message)
+    return q
+
+
+@app.put("/send-notification/{email}")
+async def send_notification(email: str, background_tasks: BackgroundTasks, q: Annotated[str | None, Depends(get_query)]):
+    message = f"message to {email}\n"
+    background_tasks.add_task(write_log, message)
+    return {"message": "Message sent"}</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000/send-notification/test@example.com?q=test_query">
+            <input slot="inputs" type="text" name="method" value="PUT">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+        <p>В этом примере сообщения будут записаны в файл <code>log.txt</code> после отправки ответа.</p>
+        <p>Если в запросе была строка запроса (query), она будет записана в лог фоновой задачей.</p>
+        <p>Затем другая фоновая задача, созданная в функции-обработчике пути, запишет сообщение, используя
+        path-параметр <code>email</code>.</p>
+
+        <h2>Технические детали</h2>
+        <p>Класс <code>BackgroundTasks</code> приходит напрямую из
+        <a target="_blank" href="https://www.starlette.dev/background/">starlette.background</a>.</p>
+        <p>Он импортируется/включается прямо в FastAPI, чтобы вы могли импортировать его из <code>fastapi</code>
+        и избежать случайного импорта альтернативного <code>BackgroundTask</code> (без <code>s</code> на конце) из
+        <code>starlette.background</code></p>
+        <p>Используя только <code>BackgroundTasks</code> (а не <code>BackgroundTask</code>), его можно применять как
+        параметр функции-обработчика пути, и <b>FastAPI</b> сделает остальное за вас, как при использовании объекта
+        <code>Request</code> напрямую.</p>
+        <p>По-прежнему можно использовать один <code>BackgroundTask</code> в FastAPI, но тогда вам нужно создать
+        объект в своем коде и вернуть Starlette <code>Response</code>, включающий его.</p>
+        <p>Подробнее см. в <a target="_blank" href="https://www.starlette.dev/background/">официальной документации Starlette по фоновым задачам</a>.</p>
+
+        <h2>Предостережение</h2>
+        <p>Если вам нужно выполнять тяжелые вычисления в фоне, и при этом они не обязательно должны запускаться тем же
+        процессом (например, вам не нужно делаться памятью, переменными и т.п.), вам могут подойти более мощные инструменты,
+        такие как <a target="_blank" href="https://docs.celeryq.dev/">Celery</a>.</p>
+        <p>Они обычно требуют более сложной конфигурации, менеджера очереди сообщений/заданий (например, RabbitMQ или
+        Reddis), но позволяют запускать фоновые задачи в нескольких процессах и, что особенно важно, на нескольких серверах.</p>
+        <p>Но если вам нужен доступ к переменным и объектам из того же приложения <b>FastAPI</b>, или нужно выполнять
+        небольшие фоновые задачи (например, отправку email-уведомления), вы можете просто использовать <code>BackgroundTasks</code>.</p>
+
+        <h2>Резюме</h2>
+        <p>Импортируйте и используйте <code>BackgroundTasks</code> с параметрами в функциях-обработчиках пути и зависимостях,
+        чтобы добавлять фоновые задачи.</p>
+    </article>
+</body>
+</html>
