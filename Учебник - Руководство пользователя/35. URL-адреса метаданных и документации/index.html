@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>URL-адреса метаданных и документации</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>URL-адреса метаданных и документации</h1>
+        <p>Вы можете настроить несколько конфигураций метаданных в вашем <b>FastAPI</b> приложении.</p>
+
+        <h2>Метаданные для API</h2>
+        <p>Вы можете задать следующие поля, которые используются в спецификации OpenAPI и в UI автоматической
+        документации API:</p>
+        <table>
+            <thead>
+            <tr>
+                <th>Параметр</th>
+                <th>Тип</th>
+                <th>Описание</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td><code>title</code></td>
+                <td><code>str</code></td>
+                <td>Заголовок API.</td>
+            </tr>
+            <tr>
+                <td><code>summary</code></td>
+                <td><code>str</code></td>
+                <td>Краткое резюме API.</td>
+            </tr>
+            <tr>
+                <td><code>description</code></td>
+                <td><code>str</code></td>
+                <td>Краткое описание API. Может быть использован Markdown.</td>
+            </tr>
+            <tr>
+                <td><code>version</code></td>
+                <td><code>str</code></td>
+                <td>Версия API. Версия вашего собственного приложения, а не OpenAPI. К примеру <code>2.5.0</code>.</td>
+            </tr>
+            <tr>
+                <td><code>terms_of_service</code></td>
+                <td><code>str</code></td>
+                <td>Ссылка с условиями пользования API. Если указано, то это должен быть URL-адрес.</td>
+            </tr>
+            <tr>
+                <td><code>contact</code></td>
+                <td><code>dict</code></td>
+                <td>Контактная информация для открытого API. Может содержать несколько полей.
+                    <div class="admonition note">
+                        <h3>поля <code>contact</code></h3>
+                        <table>
+                            <thead>
+                            <tr>
+                                <th>Параметр</th>
+                                <th>Тип</th>
+                                <th>Описание</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr>
+                                <td><code>name</code></td>
+                                <td><code>str</code></td>
+                                <td>Идентификационное имя контактного лица/организации.</td>
+                            </tr>
+                            <tr>
+                                <td><code>url</code></td>
+                                <td><code>str</code></td>
+                                <td>URL указывающий на контактную информацию. ДОЛЖЕН быть в формате URL.</td>
+                            </tr>
+                            <tr>
+                                <td><code>email</code></td>
+                                <td><code>str</code></td>
+                                <td>Email адрес контактного лица/организации. ДОЛЖЕН быть в формате email адреса.</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td><code>license_info</code></td>
+                <td><code>dict</code></td>
+                <td>Информация о лицензии открытого API. Может содержать несколько полей.
+                    <div class="admonition note">
+                        <h3>поля <code>license_info</code></h3>
+                        <table>
+                            <thead>
+                            <tr>
+                                <th>Параметр</th>
+                                <th>Тип</th>
+                                <th>Описание</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr>
+                                <td><code>name</code></td>
+                                <td><code>str</code></td>
+                                <td><b>ОБЯЗАТЕЛЬНО</b> (если установлен параметр <code>license_info</code>).
+                                Название лицензии, используемой для API.</td>
+                            </tr>
+                            <tr>
+                                <td><code>identifier</code></td>
+                                <td><code>str</code></td>
+                                <td>Выражение лицензии <a target="_blank" href="https://spdx.org/licenses/">SPDX</a> для API.
+                                Поле <code>identifier</code> взаимоисключающее с полем <code>url</code>.</td>
+                            </tr>
+                            <tr>
+                                <td><code>url</code></td>
+                                <td><code>str</code></td>
+                                <td>URL, указывающий на лицензию, используемую для API. ДОЛЖЕН быть в формате URL.</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+        <p>Вы можете задать их следующим образом:</p>
+<pre data-line="3-16, 19-32" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+
+description = """
+ChimichangApp API helps you do awesome stuff. 🚀
+
+## Items
+
+You can **read items**.
+
+## Users
+
+You will be able to:
+
+* **Create users** (_not implemented_).
+* **Read users** (_not implemented_).
+"""
+
+app = FastAPI(
+    title="ChimichangApp",
+    description=description,
+    summary="Deadpool's favorite app. Nuff said.",
+    version="0.0.1",
+    terms_of_service="http://example.com/terms/",
+    contact={
+        "name": "Deadpoolio the Amazing",
+        "url": "http://x-force.example.com/contact/",
+        "email": "dp@x-force.example.com",
+    },
+    license_info={
+        "name": "Apache 2.0",
+        "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
+    },
+)
+
+
+@app.get("/items")
+async def read_items():
+    return [{"name": "Katana"}]</code></pre>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Вы можете использовать Markdown в поле <code>description</code>, и оно будет отображено в выводе.</p>
+        </div>
+
+        <h2>Идентификатор лицензии</h2>
+        <p>Вы также можете задать <code>license_info</code> с помощью <code>identifier</code> вместо <code>url</code>.</p>
+        <p>К примеру:</p>
+<pre data-line="31" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+
+description = """
+ChimichangApp API helps you do awesome stuff. 🚀
+
+## Items
+
+You can **read items**.
+
+## Users
+
+You will be able to:
+
+* **Create users** (_not implemented_).
+* **Read users** (_not implemented_).
+"""
+
+app = FastAPI(
+    title="ChimichangApp",
+    description=description,
+    summary="Deadpool's favorite app. Nuff said.",
+    version="0.0.1",
+    terms_of_service="http://example.com/terms/",
+    contact={
+        "name": "Deadpoolio the Amazing",
+        "url": "http://x-force.example.com/contact/",
+        "email": "dp@x-force.example.com",
+    },
+    license_info={
+        "name": "Apache 2.0",
+        "identifier": "MIT"
+    },
+)
+
+
+@app.get("/items")
+async def read_items():
+    return [{"name": "Katana"}]</code></pre>
+
+        <h2>Метаданные для тегов</h2>
+        <p>Вы также можете добавить дополнительные метаданные для различных тегов, используемых для группировки
+        ваших операций пути с помощью параметра <code>openapi_tags</code>.</p>
+        <p>Он принимает список, содержащий один словарь для каждого тега.</p>
+        <p>Каждый словарь может содержать в себе:</p>
+        <ul>
+            <li>
+                <p><code>name</code> (<b>обязательно</b>): <code>str</code>-значение с тем же именем тега, которое
+                вы используете в параметре <code>tags</code> в ваших <i>операциях пути</i> и <code>APIRouter</code>ах.</p>
+            </li>
+            <li>
+                <p><code>description</code>: <code>str</code>-значение с кратким описанием для тега. Может содержать
+                Markdown и будет отображаться в UI документации.</p>
+            </li>
+            <li>
+                <p><code>externalDocs</code>: <code>dict</code>-значение описывающее внешнюю документацию. Включает в
+                себя:</p>
+                <ul>
+                    <li>
+                        <p><code>description</code>: <code>str</code>-значение с кратким описанием для внешней документации.</p>
+                    </li>
+                    <li>
+                        <p><code>url</code> (<b>обязательно</b>): <code>str</code>-значение с URL-адресом для внешней
+                        документации.</p>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+
+        <h3>Создание метаданных для тегов</h3>
+        <p>Давайте попробуем сделать это на примере с тегами для <code>users</code> и <code>items</code>.</p>
+        <p>Создайте метаданные для ваших тегов и передайте их в параметре <code>openapi_tags</code>:</p>
+<pre data-line="18-31, 48" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+
+description = """
+ChimichangApp API helps you do awesome stuff. 🚀
+
+## Items
+
+You can **read items**.
+
+## Users
+
+You will be able to:
+
+* **Create users** (_not implemented_).
+* **Read users** (_not implemented_).
+"""
+
+tags_metadata = [
+    {
+        "name": "users",
+        "description": "Operations with users. The **login** logic is also here.",
+    },
+    {
+        "name": "items",
+        "description": "Manage items. So _fancy_ they have their own docs.",
+        "externalDocs": {
+            "description": "Items external docs",
+            "url": "https://fastapi.tiangolo.com/",
+        },
+    },
+]
+
+app = FastAPI(
+    title="ChimichangApp",
+    description=description,
+    summary="Deadpool's favorite app. Nuff said.",
+    version="0.0.1",
+    terms_of_service="http://example.com/terms/",
+    contact={
+        "name": "Deadpoolio the Amazing",
+        "url": "http://x-force.example.com/contact/",
+        "email": "dp@x-force.example.com",
+    },
+    license_info={
+        "name": "Apache 2.0",
+        "identifier": "MIT"
+    },
+    openapi_tags=tags_metadata,
+)
+
+
+@app.get("/users", tags=["users"])
+async def read_users():
+    return [{"name": "Harry"}, {"name": "Ron"}]
+
+
+@app.get("/items", tags=["items"])
+async def read_items():
+    return [{"name": "wand"}, {"name": "flying broom"}]</code></pre>
+        <p>Помните, что вы можете использовать Markdown внутри описания, к примеру «login» будет отображен жирным
+        шрифтом (<b>login</b>) и «fancy» будет отображаться курсивом (<i>fancy</i>).</p>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Вам необязательно добавлять метаданные для всех используемых тегов.</p>
+        </div>
+
+        <h3>Используйте собственные теги</h3>
+        <p>Используйте параметр <code>tags</code> с вашими <i>операциями пути</i> (и <code>APIRouter</code>ами), чтобы
+        присвоить им различные теги:</p>
+<pre data-line="52, 57" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+
+description = """
+ChimichangApp API helps you do awesome stuff. 🚀
+
+## Items
+
+You can **read items**.
+
+## Users
+
+You will be able to:
+
+* **Create users** (_not implemented_).
+* **Read users** (_not implemented_).
+"""
+
+tags_metadata = [
+    {
+        "name": "users",
+        "description": "Operations with users. The **login** logic is also here.",
+    },
+    {
+        "name": "items",
+        "description": "Manage items. So _fancy_ they have their own docs.",
+        "externalDocs": {
+            "description": "Items external docs",
+            "url": "https://fastapi.tiangolo.com/",
+        },
+    },
+]
+
+app = FastAPI(
+    title="ChimichangApp",
+    description=description,
+    summary="Deadpool's favorite app. Nuff said.",
+    version="0.0.1",
+    terms_of_service="http://example.com/terms/",
+    contact={
+        "name": "Deadpoolio the Amazing",
+        "url": "http://x-force.example.com/contact/",
+        "email": "dp@x-force.example.com",
+    },
+    license_info={
+        "name": "Apache 2.0",
+        "identifier": "MIT"
+    },
+    openapi_tags=tags_metadata,
+)
+
+
+@app.get("/users", tags=["users"])
+async def read_users():
+    return [{"name": "Harry"}, {"name": "Ron"}]
+
+
+@app.get("/items", tags=["items"])
+async def read_items():
+    return [{"name": "wand"}, {"name": "flying broom"}]</code></pre>
+        <div class="admonition info">
+            <h3>Дополнительная информация</h3>
+            <p>Узнайте больше о тегах в <a target="_blank" href="https://fastapi.tiangolo.com/ru/tutorial/path-operation-configuration/#tags">Конфигурации операции пути</a>.</p>
+        </div>
+
+        <h3>Проверьте документацию</h3>
+        <p>Теперь, если вы проверите документацию, вы увидите всю дополнительную информацию:
+        <a target="_blank" href="http://127.0.0.1:8000/docs">http://127.0.0.1:8000/docs</a>.</p>
+
+        <h3>Порядок расположения тегов</h3>
+        <p>Порядок расположения словарей метаданных для каждого тега определяет также порядок, отображаемый в UI документации.</p>
+        <p>К примеру, несмотря на то, что <code>users</code> будут идти после <code>items</code> в алфавитном порядке,
+        они отображаются раньше, потому что мы добавляем свои метаданные в качестве первого словаря в списке.</p>
+
+        <h2>URL-адрес OpenAPI</h2>
+        <p>По умолчанию схема OpenAPI отображается по адресу <code>/openapi.json</code>.</p>
+        <p>Но вы можете изменить это с помощью параметра <code>openapi_url</code>.</p>
+        <p>К примеру, чтобы задать ее отображение по адресу <code>/api/v1/openapi.json</code>:</p>
+<pre data-line="3" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+
+app = FastAPI(openapi_url="/api/v1/openapi.json")
+
+
+@app.get("/items/")
+async def read_items():
+    return [{"name": "Foo"}]</code></pre>
+        <p>Если вы хотите отключить схему OpenAPI полностью, вы можете задать <code>openapi_url=None</code>, это также
+        отключит пользовательские интерфейсы документации, которые ее используют.</p>
+
+        <h2>URL-адреса документации</h2>
+        <p>Вы можете изменить конфигурацию двух пользовательских интерфейсов документации, которые включены:</p>
+        <ul>
+            <li>
+                <p><b>Swagger UI</b>: отображаемый по адресу <code>/docs</code>.</p>
+                <ul>
+                    <li>
+                        <p>Вы можете задать его URL с помощью параметра <code>docs_url</code>.</p>
+                    </li>
+                    <li>
+                        <p>Вы можете отключить его с помощью настройки <code>docs_url=None</code>.</p>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <p><b>ReDoc</b>: отображаемый по адресу <code>/redoc</code>.</p>
+                <ul>
+                    <li>
+                        <p>Вы можете задать его URL с помощью параметра <code>redoc_url</code>.</p>
+                    </li>
+                    <li>
+                        <p>Вы можете отключить это с помощью настройки <code>redoc_url=None</code>.</p>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+        <p>К примеру, чтобы задать отображение Swagger UI по адресу <code>/documentation</code> и отключить ReDoc:</p>
+<pre data-line="3" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+
+app = FastAPI(docs_url="/documentation", redoc_url=None)
+
+
+@app.get("/items/")
+async def read_items():
+    return [{"name": "Foo"}]</code></pre>
+    </article>
+</body>
+</html>

@@ -188,3 +188,25 @@ div.filename h4:first-of-type::before {
     height: 1rem;
     width: 1rem;
 }
+
+table {
+    box-sizing: border-box;
+    border-collapse: collapse;
+    border: 0.1rem solid var(--code-background-color);
+    width: calc(100% - 2rem);
+    margin: 1rem;
+}
+
+th, td {
+    border-bottom: 0.1rem solid var(--code-background-color);
+    text-align: left;
+    padding: 1rem;
+}
+
+tbody > tr:hover {
+    background: var(--code-background-color);
+}
+
+tbody tr:hover div.admonition {
+    background: white;
+}
