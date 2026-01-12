@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Статические файлы</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Статические файлы</h1>
+        <p>Вы можете предоставлять статические файлы автоматически из директории, используя <code>StaticFiles</code>.</p>
+
+        <h2>Использование <code>StaticFiles</code></h2>
+        <ul>
+            <li>
+                <p>Импортируйте <code>StaticFiles</code>.</p>
+            </li>
+            <li>
+                <p>«Примонтируйте» экземпляр <code>StaticFiles()</code> к определенному пути. </p>
+            </li>
+        </ul>
+<pre data-line="2, 6" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+
+app = FastAPI()
+
+app.mount("/static", StaticFiles(directory="static"), name="static")</code></pre>
+        <div class="admonition note">
+            <h3>Технические детали</h3>
+            <p>Вы также можете использовать <code>from starlette.staticfiles import StaticFiles</code>.</p>
+            <p><b>FastAPI</b> предоставляет <code>starlette.staticfiles</code> под псевдонимом <code>fastapi.staticfiles</code>,
+            просто для вашего удобства, как разработчика. Но на самом деле это берется напрямую из библиотеки Starlette.</p>
+        </div>
+
+        <h3>Что такое «Монтирование»</h3>
+        <p>«Монтирование» означает добавление полноценного «независимого» приложения на определенный путь, которое
+        затем обрабатывает все подпути.</p>
+        <p>Это отличается от использования <code>APIRouter</code>, так как примонтированное приложение является полностью
+        независимым. OpenAPI и документация из вашего главного приложения не будут содержать ничего из примонтированного
+        приложения, и т.д.</p>
+
+        <h2>Детали</h2>
+        <p>Первый параметр <code>"/static"</code> относится к подпути, по которому это «подприложение» будет
+        «примонтировано». Таким образом, любой путь начинающийся со <code>"/static"</code> будет обработан этим приложением.</p>
+        <p>Параметр <code>directory="static"</code> относится к имени директории, которая содержит ваши статические
+        файлы.</p>
+        <p><code>name="static"</code> дает имя маршруту, которое может быть использовано внутри <b>FastAPI</b>.</p>
+        <p>Все эти параметры могут отличаться от <code>"static"</code>, настройте их в соответствии с вашими нуждами
+        и конкретными деталями вашего собственного приложения.</p>
+
+        <h2>Больше информации</h2>
+        <p>Для получения дополнительной информации о деталях и настройках ознакомьтесь с
+        <a target="_blank" href="https://www.starlette.dev/staticfiles/">Документацией Starlette о статических файлах</a>.</p>
+    </article>
+</body>
+</html>
