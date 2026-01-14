@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Тестирование</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Тестирование</h1>
+        <p>Благодаря <a target="_blank" href="https://www.starlette.dev/testclient/">Starlette</a>, тестировать
+        приложение <b>FastAPI</b> легко и приятно.</p>
+        <p>Тестирование основано на библиотеке <a target="_blank" href="https://www.python-httpx.org/">HTTPX</a>,
+        которая в свою очередь основана на библиотеке Requests, так что все действия знакомы и интуитивно понятны.</p>
+        <p>Используя эти инструменты, вы можете напрямую задействовать
+        <a target="_blank" href="https://docs.pytest.org/">pytest</a> с <b>FastAPI</b>.</p>
+
+        <h2>Использование класса <code>TestClient</code></h2>
+        <div class="admonition info">
+            <h3>Информация</h3>
+            <p>Для использования класса <code>TestClient</code> сначала установите
+            <code><a target="_blank" href="https://www.python-httpx.org/">httpx</a></code>.</p>
+            <p>Убедитесь, что вы создали виртуальное окружение, активировали его, а затем установили пакет,
+            например:</p>
+            <pre><code class="language-bash">$ pip install httpx</code></pre>
+        </div>
+        <p>Импортируйте <code>TestClient</code>.</p>
+        <p>Создайте объект <code>TestClient</code>, передав ему в качестве параметра ваше приложение <b>FastAPI</b>.</p>
+        <p>Создайте функцию, название которой должно начинаться с <code>test_</code> (это стандарт из соглашений
+        <code>pytest</code>).</p>
+        <p>Используйте объект <code>TestClient</code> так же, как вы используете <code>httpx</code>.</p>
+        <p>Напишите простое утверждение с <code>assert</code> дабы проверить истинность Python-выражения (это тоже
+        стандарт <code>pytest</code>).</p>
+<pre data-line="2, 12, 15-18" class="line-numbers"><code class="language-python">from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+app = FastAPI()
+
+
+@app.get("/")
+async def read_main():
+    return {"msg": "Hello World"}
+
+
+client = TestClient(app)
+
+
+def test_read_main():
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.json() == {"msg": "Hello World"}</code></pre>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Обратите внимание, что тестирующая функция является обычной <code>def</code>, а не асинхронной
+            <code>async def</code>.</p>
+            <p>И вызов клиента также осуществляется без <code>await</code>.</p>
+            <p>Это позволяет вам использовать <code>pytest</code> без лишних усложнений.</p>
+        </div>
+        <div class="admonition note">
+            <h3>Технические детали</h3>
+            <p>Также можно написать <code>from starlette.testclient import TestClient</code>.</p>
+            <p><b>FastAPI</b> предоставляет тот же самый <code>starlette.testclient</code> как <code>fastapi.testclient</code>.
+            Это всего лишь небольшое удобство для вас, как разработчика. Но он берется напрямую из Starlette.</p>
+        </div>
+        <div class="admonition tip">
+            <h3>Подсказка</h3>
+            <p>Если для тестирования вам, помимо запросов к приложению FastAPI, необходимо вызывать асинхронные функции
+            (например, для подключения к базе данных с помощью асинхронного драйвера), то ознакомьтесь со страницей
+            <a target="_blank" href="https://fastapi.tiangolo.com/ru/advanced/async-tests/">Асинхронное тестирование</a>
+            в расширенном руководстве.</p>
+        </div>
+
+        <h2>Разделение тестов</h2>
+        <p>В реальном приложении вы, вероятно, разместите тесты в отдельном файле.</p>
+        <p>Кроме того, ваше приложение <b>FastAPI</b> может состоять из нескольких файлов, модулей и т.п.</p>
+
+        <h3>Файл приложения FastAPI</h3>
+        <p>Допустим, структура файлов вашего приложения похожа на ту, что описана на странице
+        <a target="_blank" href="../33.%20Большие%20приложения,%20в%20которых%20много%20файлов/index.html">Более крупные приложения</a>:</p>
+<pre><code class="language-">.
+├── app
+│   ├── __init__.py
+│   └── main.py</code></pre>
+        <p>В файле <code>main.py</code> находится ваше приложение <b>FastAPI</b>:</p>
+<pre class="line-numbers"><code class="language-python">from fastapi import FastAPI
+
+app = FastAPI()
+
+
+@app.get("/")
+async def read_main():
+    return {"msg": "Hello World"}</code></pre>
+
+        <h3>Файл тестов</h3>
+        <p>Также у вас может быть файл <code>test_main.py</code> содержащий тесты. Можно разместить тестовый файл
+        и файл приложения в одной директории (в директориях для Python-кода желательно размещать и файл
+        <code>__init__.py</code>):</p>
+<pre ><code class="language-">.
+├── app
+│   ├── __init__.py
+│   ├── main.py
+│   └── test_main.py</code></pre>
+        <p>Так как оба файла находятся в одной директории, для импорта объекта приложения из файла <code>main</code>
+        в файл <code>test_main</code> вы можете использовать относительный импорт:</p>
+<pre data-line="3" class="line-numbers"><code class="language-python">from fastapi.testclient import TestClient
+
+from .main import app
+
+client = TestClient(app)
+
+
+def test_read_main():
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.json() == {"msg": "Hello World"}</code></pre>
+        <p>... И писать дальше тесты, как и раньше.</p>
+
+        <h2>Тестирование: расширенный пример</h2>
+        <p>Теперь давайте расширим наш пример и добавим деталей, чтоб посмотреть, как тестировать различные части
+        приложения.</p>
+
+        <h3>Расширенный файл приложения FastAPI</h3>
+        <p>Мы продолжим работу с той же файловой структурой, что и ранее:</p>
+<pre ><code class="language-">.
+├── app
+│   ├── __init__.py
+│   ├── main.py
+│   └── test_main.py</code></pre>
+        <p>Предположим, что в файле <code>main.py</code> с приложением <b>FastAPI</b> есть несколько <i>операций пути</i>.</p>
+        <p>В нем описана операция <code>GET</code>, которая может вернуть ошибку.</p>
+        <p>Еще есть операция <code>POST</code>, и она может вернуть несколько ошибок.</p>
+        <p>Обе <i>операции пути</i> требуют наличия в запросе заголовка <code>X-Token</code>.</p>
+<pre class="line-numbers"><code class="language-python">from typing import Annotated
+
+from fastapi import FastAPI, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+fake_secret_token = "coneofsilence"
+
+fake_db = {
+    "foo": {"id": "foo", "title": "Foo", "description": "There goes my hero"},
+    "bar": {"id": "bar", "title": "Bar", "description": "The bartenders"},
+}
+
+
+class Item(BaseModel):
+    id: str
+    title: str
+    description: str | None = None
+
+
+@app.get("/items/{item_id}", response_model=Item)
+async def get_item(item_id: str, x_token: Annotated[str, Header()]):
+    if x_token != fake_secret_token:
+        raise HTTPException(status_code=400, detail="Invalid X-Token header")
+    if item_id not in fake_db:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return fake_db[item_id]
+
+
+@app.post("/items", response_model=Item)
+async def create_item(item: Item, x_token: Annotated[str, Header()]):
+    if x_token != fake_secret_token:
+        raise HTTPException(status_code=400, detail="Invalid X-Token header")
+    if item.id in fake_db:
+        raise HTTPException(status_code=409, detail="Item already exists")
+    fake_db[item.id] = item
+    return item</code></pre>
+
+        <h3>Расширенный файл тестов</h3>
+        <p>Теперь обновим файл <code>test_main.py</code>, добавив в него тестов:</p>
+<pre class="line-numbers"><code class="language-python">from fastapi.testclient import TestClient
+
+from .main import app
+
+client = TestClient(app)
+
+
+def test_get_item():
+    response = client.get("/items/foo", headers={"X-Token": "coneofsilence"})
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": "foo",
+        "title": "Foo",
+        "description": "There goes my hero"
+    }
+
+
+def test_get_item_bad_token():
+    response = client.get("/items/foo", headers={"X-Token": "hailhydra"})
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Invalid X-Token header"}
+
+
+def test_get_nonexistent_item():
+    response = client.get("/items/baz", headers={"X-Token": "coneofsilence"})
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Item not found"}
+
+
+def test_create_item():
+    response = client.post(
+        "/items",
+        headers={"X-Token": "coneofsilence"},
+        json={"id": "foobar", "title": "Foo Bar", "description": "The Foo Barters"}
+    )
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": "foobar",
+        "title": "Foo Bar",
+        "description": "The Foo Barters",
+    }
+
+
+def test_create_item_bad_token():
+    response = client.post(
+        "/items",
+        headers={"X-Token": "hailhydra"},
+        json={"id": "bazz", "title": "Bazz", "description": "Drop the bazz"}
+    )
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Invalid X-Token header"}
+
+
+def test_create_existing_item():
+    response = client.post(
+        "/items",
+        headers={"X-Token": "coneofsilence"},
+        json={"id": "foo", "title": "The Foo ID Stealers", "description": "There goes my stealer"}
+    )
+    assert response.status_code == 409
+    assert response.json() == {"detail": "Item already exists"}</code></pre>
+        <p>Для получения дополнительной информации о передаче данных на бэкенд с помощью <code>httpx</code>
+        или <code>TestClient</code> ознакомьтесь с
+        <a target="_blank" href="https://www.python-httpx.org/">документацией HTTPX</a>.</p>
+        <div class="admonition info">
+            <h3>Информация</h3>
+            <p>Обратите внимание, что <code>TestClient</code> принимает данные, которые можно конвертировать в JSON,
+            но не модели Pydantic.</p>
+            <p>Если в ваших тестах есть модели Pydantic и вы хотите отправить их в тестируемое приложение, то можете
+            использовать функцию <code>jsonable_encoder</code>, описанную на странице
+            <a target="_blank" href="../26.%20JSON-совместимый%20кодировщик/index.html">Кодировщик совместимый с JSON</a>.</p>
+        </div>
+
+        <h2>Запуск</h2>
+        <p>Далее вам нужно установить <code>pytest</code>.</p>
+        <p>Убедитесь, что вы создали виртуальное окружение, активировали его, а затем установили пакет, например:</p>
+        <pre><code class="language-bash">$ pip install pytest</code></pre>
+        <p>Он автоматически найдет все файлы и тесты, выполнит их и предоставит вам отчет о результатах тестирования.</p>
+        <p>Запустите тесты:</p>
+        <pre><code class="language-bash">$ pytest</code></pre>
+    </article>
+</body>
+</html>
