@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Отладка</title>
+    <link href="../../themes/style.css" rel="stylesheet">
+    <script defer src="../../themes/highlightElements.js"></script>
+</head>
+<body>
+    <article>
+        <h1>Отладка</h1>
+        <p>Вы можете подключить отладчики в своем редакторе, например, в Visual Studio Code или PyCharm.</p>
+
+        <h2>Вызов <code>uvicorn</code></h2>
+        <p>В вашем FastAPI приложении, импортируйте и вызовите <code>uvicorn</code> напрямую:</p>
+<pre data-line="1, 28" class="line-numbers"><code class="language-python">import uvicorn
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:63342",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+
+@app.get("/")
+def root():
+    a = "a"
+    b = "b" + a
+    return {"hello world": b}
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)</code></pre>
+        <request-response-container>
+            <label slot="labels">url:</label>
+            <label slot="labels">method:</label>
+
+            <input slot="inputs" type="url" name="url" value="http://127.0.0.1:8000">
+            <input slot="inputs" type="text" name="method" value="GET">
+
+            <button slot="buttons">Отправить</button>
+
+            <pre slot="response" class="language-json"></pre>
+        </request-response-container>
+
+        <h3>Описание <code>__name__ == "__main__"</code></h3>
+        <p>Главная цель использования <code>__name__ == "__main__"</code> в том, чтобы код выполнялся при запуске
+        файла с помощью:</p>
+        <pre><code class="language-bash">$ python main.py</code></pre>
+        <p>Но не вызывался, когда другой файл импортирует это, например:</p>
+        <pre><code class="language-python">from myapp import app</code></pre>
+
+        <h4>Больше деталей</h4>
+        <p>Давайте назовем ваш файл <code>myapp.py</code>.</p>
+        <p>Если вы запустите его с помощью:</p>
+        <pre><code class="language-bash">$ python main.py</code></pre>
+        <p>То встроенная переменная <code>__name__</code>, автоматически создаваемая Python в вашем файле, будет
+        иметь значение строкового типа <code>"__main__"</code>.</p>
+        <p>Тогда выполнится условие и эта часть кода:</p>
+        <pre><code class="language-python">uvicorn.run(app, host="0.0.0.0", port=8000)</code></pre>
+        <p>Будет запущена.</p>
+        <p>Но этого не произойдет, если вы импортируете этот модуль (файл).</p>
+        <p>Таким образом, если у вас есть файл <code>importer.py</code> с таким импортом:</p>
+        <pre><code class="language-python">from main import app</code></pre>
+        <p>То автоматически создаваемая внутри файла <code>myapp.py</code> переменная <code>__name__</code> будет
+        иметь значение отличающееся от <code>"__main__"</code>.</p>
+        <p>Следовательно, строка:</p>
+        <pre><code class="language-python">uvicorn.run(app, host="0.0.0.0", port=8000)</code></pre>
+        <p>Не будет выполнена.</p>
+        <div class="admonition info">
+            <h3>Информация</h3>
+            <p>Для получения дополнительной информации, ознакомьтесь с
+            <a target="_blank" href="https://docs.python.org/3/library/__main__.html">официальной документацией Python</a>.</p>
+        </div>
+
+        <h2>Запуск вашего кода с помощью отладчика</h2>
+        <p>Так как вы запускаете сервер Uvicorn непосредственно из вашего кода, вы можете вызвать Python программу
+        (ваше FastAPI приложение) напрямую из отладчика.</p>
+    </article>
+</body>
+</html>
